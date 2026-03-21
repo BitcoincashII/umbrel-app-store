@@ -1,11 +1,11 @@
 manifestVersion: 1.1
-id: bch2-apps-forge-pool
+id: forge-pool
 name: Forge Pool
 tagline: Self-hosted BCH2 mining pool
 icon: https://hashforge.bch2.org/static/logo.png
 category: bitcoin
-version: "1.0.3"
-port: 3080
+version: "1.0.4"
+port: 80
 description: >-
   Run your own BCH2 mining pool with a single click. Forge Pool includes
   everything you need: a full BCH2 node, stratum server, and web dashboard.
@@ -28,10 +28,10 @@ support: https://github.com/BitcoincashII/forge-pool-umbrel/issues
 gallery: []
 
 releaseNotes: >-
-  Initial Umbrel release featuring:
-  - One-click installation
-  - Pruned node by default (~500MB)
-  - Auto-configuration
+  Version 1.0.4:
+  - Fixed app installation issues
+  - Pinned image digests for stability
+  - Pruned node by default (~550MB)
   - Built-in stratum on port 3333
 
 dependencies: []
