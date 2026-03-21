@@ -41,7 +41,7 @@ services:
       - api
       - node
     ports:
-      - "2345:3333"
+      - "3333:3333"
     environment:
       API_URL: http://api:8080
       RPC_HOST: node
