@@ -18,9 +18,9 @@ support: https://github.com/BitcoincashII/forge-pool-umbrel/issues
 gallery:
   - https://raw.githubusercontent.com/BitcoincashII/BCH2-Graphics/main/bch2_logo.png
 releaseNotes: >-
-  - Fixed API connection to node (was using wrong port)
-  - Node status indicator shows sync progress in UI
-  - Stratum waits for node sync before starting
+  - Fixed browser caching preventing UI updates
+  - Stratum port now displays user's configured port
+  - Fixed /miners endpoint returning null
 dependencies: []
 path: ""
 defaultUsername: ""
