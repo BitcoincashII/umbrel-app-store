@@ -22,7 +22,10 @@ services:
       - node
       - postgres
       - redis
+    volumes:
+      - ${APP_DATA_DIR}/data:/data
     environment:
+      DATA_DIR: /data
       DB_HOST: postgres
       DB_PORT: "5432"
       DB_USER: forge
@@ -42,7 +45,10 @@ services:
       - node
     ports:
       - "3333:3333"
+    volumes:
+      - ${APP_DATA_DIR}/data:/data
     environment:
+      DATA_DIR: /data
       API_URL: http://api:8080
       RPC_HOST: node
       RPC_PORT: "8332"
