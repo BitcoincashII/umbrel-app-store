@@ -4,7 +4,7 @@ name: Forge Pool
 tagline: Self-hosted BCH2 mining pool
 icon: https://hashforge.bch2.org/static/logo.png
 category: bitcoin
-version: "1.0.0"
+version: "1.0.3"
 port: 3080
 description: >-
   Run your own BCH2 mining pool with a single click. Forge Pool includes
