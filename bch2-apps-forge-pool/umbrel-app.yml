@@ -4,7 +4,7 @@ name: Forge Pool
 tagline: Self-hosted BCH2 mining pool
 icon: https://raw.githubusercontent.com/BitcoincashII/BCH2-Graphics/main/bch2_logo.png
 category: bitcoin
-version: "1.2.20"
+version: "1.2.21"
 port: 3334
 description: >-
   Run your own BCH2 mining pool with a single click.
@@ -18,9 +18,9 @@ support: https://github.com/BitcoincashII/forge-pool-umbrel/issues
 gallery:
   - https://raw.githubusercontent.com/BitcoincashII/BCH2-Graphics/main/bch2_logo.png
 releaseNotes: >-
+  - Show 'Syncing...' instead of fake 1% when node RPC busy
   - Fixed browser caching preventing UI updates
   - Stratum port now displays user's configured port
-  - Fixed /miners endpoint returning null
 dependencies: []
 path: ""
 defaultUsername: ""
