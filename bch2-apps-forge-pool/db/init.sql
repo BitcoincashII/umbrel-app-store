@@ -47,7 +47,14 @@ CREATE TABLE IF NOT EXISTS payouts (
     txid VARCHAR(64),
     confirmed BOOLEAN DEFAULT FALSE,
     is_solo BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMP DEFAULT NOW(),
+    paid_at TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_payouts_miner ON payouts(miner_address);
 CREATE INDEX IF NOT EXISTS idx_payouts_confirmed ON payouts(confirmed);
+
+-- Migration for existing databases: add paid_at if missing
+DO $$ BEGIN
+    ALTER TABLE payouts ADD COLUMN IF NOT EXISTS paid_at TIMESTAMP;
+EXCEPTION WHEN others THEN NULL;
+END $$;
