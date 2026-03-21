@@ -7,7 +7,7 @@ services:
       APP_PORT: 80
 
   node:
-    image: ghcr.io/bitcoincashii/forge-pool-node@sha256:e2938ce3cadd31711bbb20c05f92ccb6a87e83cd64d42cf0a905fba8c59c6471
+    image: ghcr.io/bitcoincashii/forge-pool-node:latest
     restart: on-failure
     stop_grace_period: 1m
     volumes:
@@ -22,7 +22,7 @@ services:
       - -rpcpassword=moneyprintergobrrr
 
   postgres:
-    image: timescale/timescaledb@sha256:b26180320dea45a27190318903f63cc2839f190315663a53b6429a937dd02196
+    image: postgres:15-alpine
     restart: on-failure
     environment:
       POSTGRES_USER: forge
@@ -33,13 +33,13 @@ services:
       - ${APP_DIR}/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
 
   redis:
-    image: redis@sha256:8b81dd37ff027bec4e516d41acfbe9fe2460070dc6d4a4570a2ac5b9d59df065
+    image: redis:7-alpine
     restart: on-failure
     volumes:
       - ${APP_DATA_DIR}/redis:/data
 
   api:
-    image: ghcr.io/bitcoincashii/forge-pool-api@sha256:12eb68902405029a2a126d6c7865d6f14d871fae2ba01c6091db893560ceec69
+    image: ghcr.io/bitcoincashii/forge-pool-api:latest
     restart: on-failure
     depends_on:
       - node
@@ -58,7 +58,7 @@ services:
       RPC_PASSWORD: moneyprintergobrrr
 
   stratum:
-    image: ghcr.io/bitcoincashii/forge-pool-stratum@sha256:534a21118474221b816f61cfbf0b6269a48f1b5934574320fca94cd9bcdf2af8
+    image: ghcr.io/bitcoincashii/forge-pool-stratum:latest
     restart: on-failure
     depends_on:
       - api
@@ -73,7 +73,7 @@ services:
       RPC_PASSWORD: moneyprintergobrrr
 
   web:
-    image: ghcr.io/bitcoincashii/forge-pool-web@sha256:666bcb21c5a9e96cc562ea43285d9b03f6041e3238c53317e6e9db90c06d9906
+    image: ghcr.io/bitcoincashii/forge-pool-web:latest
     restart: on-failure
     depends_on:
       - api
