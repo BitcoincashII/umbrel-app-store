@@ -45,7 +45,7 @@ services:
       - node
       - postgres
     ports:
-      - "3333:3333"
+      - "3456:3333"
     volumes:
       - ${APP_DATA_DIR}/data:/data
     environment:
