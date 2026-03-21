@@ -1,10 +1,10 @@
-manifestVersion: 1.1
-id: forge-pool
+manifestVersion: 1
+id: bch2-apps-forge-pool
 name: Forge Pool
 tagline: Self-hosted BCH2 mining pool
 icon: https://hashforge.bch2.org/static/logo.png
 category: bitcoin
-version: "1.0.4"
+version: "1.0.5"
 port: 80
 description: >-
   Run your own BCH2 mining pool with a single click. Forge Pool includes
