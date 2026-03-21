@@ -1,0 +1,156 @@
+version: "3.7"
+
+x-images:
+  node: &node-image ghcr.io/bitcoincashii/forge-pool-node:${VERSION:-latest}
+  api: &api-image ghcr.io/bitcoincashii/forge-pool-api:${VERSION:-latest}
+  stratum: &stratum-image ghcr.io/bitcoincashii/forge-pool-stratum:${VERSION:-latest}
+  web: &web-image ghcr.io/bitcoincashii/forge-pool-web:${VERSION:-latest}
+
+services:
+  node:
+    image: *node-image
+    container_name: forge-node
+    restart: unless-stopped
+    volumes:
+      - ${APP_DATA_DIR:-./data}/node:/root/.bch2
+    environment:
+      - RPC_PASSWORD=${NODE_RPC_PASSWORD:-changeme}
+    command:
+      - -printtoconsole
+      - -prune=1000
+      - -server=1
+      - -rpcbind=0.0.0.0
+      - -rpcallowip=0.0.0.0/0
+      - -rpcuser=forge
+      - -rpcpassword=${NODE_RPC_PASSWORD:-changeme}
+    networks:
+      - forge_network
+    healthcheck:
+      test: ["CMD-SHELL", "bitcoincashII-cli -rpcuser=forge -rpcpassword=$$RPC_PASSWORD getblockchaininfo || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+  postgres:
+    image: timescale/timescaledb:latest-pg15
+    container_name: forge-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: forge
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+      POSTGRES_DB: forgepool
+    volumes:
+      - ${APP_DATA_DIR:-./data}/postgres:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - forge_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U forge -d forgepool"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: forge-redis
+    restart: unless-stopped
+    volumes:
+      - ${APP_DATA_DIR:-./data}/redis:/data
+    networks:
+      - forge_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  api:
+    image: *api-image
+    container_name: forge-api
+    restart: unless-stopped
+    depends_on:
+      node:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=forge
+      - DB_PASSWORD=${DB_PASSWORD:-changeme}
+      - DB_NAME=forgepool
+      - REDIS_URL=redis://redis:6379
+      - RPC_HOST=node
+      - RPC_PORT=8332
+      - RPC_USER=forge
+      - RPC_PASSWORD=${NODE_RPC_PASSWORD:-changeme}
+      - POOL_NAME=${POOL_NAME:-My Forge Pool}
+      - POOL_FEE=${POOL_FEE:-1.0}
+      - SOLO_FEE=${SOLO_FEE:-0.5}
+      - POOL_ADDRESS=${POOL_ADDRESS:-}
+      - MIN_PAYOUT=${MIN_PAYOUT:-5}
+    expose:
+      - "8080"
+    networks:
+      - forge_network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/api/v1/stats || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  stratum:
+    image: *stratum-image
+    container_name: forge-stratum
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${STRATUM_PORT:-3333}:3333"
+    environment:
+      - API_URL=http://api:8080
+      - RPC_HOST=node
+      - RPC_PORT=8332
+      - RPC_USER=forge
+      - RPC_PASSWORD=${NODE_RPC_PASSWORD:-changeme}
+      - POOL_ADDRESS=${POOL_ADDRESS:-}
+      - POOL_FEE=${POOL_FEE:-1.0}
+    networks:
+      - forge_network
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 3333 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  web:
+    image: *web-image
+    container_name: forge-web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${APP_PORT:-3080}:80"
+    environment:
+      - API_URL=http://api:8080
+    networks:
+      - forge_network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:80/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  forge_network:
+    driver: bridge
