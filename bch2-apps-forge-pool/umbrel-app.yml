@@ -1,5 +1,5 @@
 manifestVersion: 1
-id: forge-pool
+id: bch2-apps-forge-pool
 name: Forge Pool
 tagline: Self-hosted BCH2 mining pool
 icon: https://hashforge.bch2.org/static/logo.png
