@@ -4,7 +4,7 @@ name: Forge Pool
 tagline: Self-hosted BCH2 mining pool
 icon: https://hashforge.bch2.org/static/logo.png
 category: bitcoin
-version: "1.1.0"
+version: "1.1.1"
 port: 3334
 description: >-
   Run your own BCH2 mining pool with a single click.
@@ -16,8 +16,6 @@ submission: https://github.com/BitcoincashII/umbrel-app-store
 repo: https://github.com/BitcoincashII/forge-pool-umbrel
 support: https://github.com/BitcoincashII/forge-pool-umbrel/issues
 gallery:
-  - https://hashforge.bch2.org/static/logo.png
-  - https://hashforge.bch2.org/static/logo.png
   - https://hashforge.bch2.org/static/logo.png
 releaseNotes: >-
   Initial release.
