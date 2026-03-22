@@ -1,0 +1,38 @@
+pool:
+  name: "Forge Pool"
+  coin: "Bitcoin Cash II"
+  coin_symbol: "BCH2"
+  address: ""  # Set via POOL_ADDRESS env var
+  fee: 1.0
+  solo_fee: 0.5
+  block_reward: 50.0
+  pplns_window: 100000
+  min_payout: 5.0
+
+stratum:
+  host: "0.0.0.0"
+  port: 3333
+  max_connections: 10000
+  vardiff:
+    enabled: true
+    min_diff: 32768
+    rental_min_diff: 500000
+    rental_max_diff: 50000000
+    max_diff: 1000000000000
+    target_time: 10
+    retarget_time: 30
+
+stratum_braiins:
+  enabled: false
+
+stratumv2:
+  enabled: false
+
+node:
+  host: "127.0.0.1"  # For network_mode: host
+  port: 8342
+  use_ssl: false
+
+database:
+  host: "127.0.0.1"  # For network_mode: host
+  port: 5432

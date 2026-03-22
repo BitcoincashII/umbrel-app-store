@@ -35,7 +35,7 @@ services:
       DB_NAME: forgepool
       REDIS_URL: redis://redis:6379
       RPC_HOST: node
-      RPC_PORT: "8332"
+      RPC_PORT: "8342"
       RPC_USER: umbrel
       RPC_PASSWORD: moneyprintergobrrr
 
@@ -49,13 +49,14 @@ services:
       - postgres
     volumes:
       - ${APP_DATA_DIR}/data:/data
+      - ./configs/stratum.yaml:/configs/config.yaml:ro
     environment:
       DATA_DIR: /data
       API_HOST: 127.0.0.1
       API_PORT: "8080"
       API_URL: http://127.0.0.1:8080
       RPC_HOST: 127.0.0.1
-      RPC_PORT: "8332"
+      RPC_PORT: "8342"
       RPC_USER: umbrel
       RPC_PASSWORD: moneyprintergobrrr
       DB_HOST: 127.0.0.1
@@ -69,7 +70,7 @@ services:
     restart: on-failure
     stop_grace_period: 1m
     ports:
-      - "127.0.0.1:8332:8332"
+      - "127.0.0.1:8342:8342"
     volumes:
       - ${APP_DATA_DIR}/node:/root/.bch2
     command:
