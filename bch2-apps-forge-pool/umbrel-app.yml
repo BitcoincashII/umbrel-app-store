@@ -4,7 +4,7 @@ name: Forge Pool
 tagline: Self-hosted BCH2 mining pool
 icon: https://raw.githubusercontent.com/BitcoincashII/BCH2-Graphics/main/bch2_logo.png
 category: bitcoin
-version: "1.2.27"
+version: "1.2.28"
 port: 3334
 description: >-
   Run your own BCH2 mining pool with a single click.
@@ -18,8 +18,7 @@ support: https://github.com/BitcoincashII/forge-pool-umbrel/issues
 gallery:
   - https://raw.githubusercontent.com/BitcoincashII/BCH2-Graphics/main/bch2_logo.png
 releaseNotes: >-
-  - Fixed stratum internal API binding for Docker networking
-  - Fixed database tables auto-creation on first startup
+  - Fixed stratum internal API auth to allow Docker network IPs
   - Fixed API to stratum communication for worker stats
 dependencies: []
 path: ""
