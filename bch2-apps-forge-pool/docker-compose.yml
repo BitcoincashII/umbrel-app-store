@@ -42,6 +42,7 @@ services:
       RPC_PASSWORD: moneyprintergobrrr
       STRATUM_INTERNAL_URL: http://host.docker.internal:3337
       INTERNAL_API_TOKEN: "31544b74955d2def57570ecf68d95113a0260cda15dc04ec3c55336a4c0c98de"
+      CORS_ORIGINS: "*"
 
   stratum:
     image: ghcr.io/bitcoincashii/forge-pool-stratum:latest
