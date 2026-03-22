@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Forge Pool</title>
+    <style>
+        :root {
+            --bg: #0a0a0a;
+            --card: #111;
+            --border: #222;
+            --text: #fff;
+            --text-dim: #888;
+            --green: #0ac18e;
+            --green-dark: #089e74;
+            --red: #ff4757;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 16px;
+            padding-bottom: 80px;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .logo {
+            width: 40px;
+            height: 40px;
+            background: var(--green);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+            color: #000;
+        }
+        .header h1 { font-size: 20px; font-weight: 600; }
+        .header .status {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--green);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .balance-card {
+            background: linear-gradient(135deg, var(--green), var(--green-dark));
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 16px;
+        }
+        .balance-label { font-size: 13px; opacity: 0.8; margin-bottom: 4px; }
+        .balance-value { font-size: 36px; font-weight: 700; font-family: 'SF Mono', Monaco, monospace; }
+        .balance-value small { font-size: 16px; opacity: 0.8; }
+        .balance-sub { font-size: 13px; opacity: 0.7; margin-top: 8px; }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .stat-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+        }
+        .stat-value {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--green);
+            font-family: 'SF Mono', Monaco, monospace;
+        }
+        .stat-label {
+            font-size: 11px;
+            color: var(--text-dim);
+            margin-top: 4px;
+            text-transform: uppercase;
+        }
+
+        .section {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+        .section-header {
+            padding: 14px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .section-header .count {
+            background: var(--border);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+
+        .worker-row {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        .worker-row:last-child { border-bottom: none; }
+        .worker-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 12px;
+        }
+        .worker-status.online { background: var(--green); box-shadow: 0 0 8px var(--green); }
+        .worker-status.offline { background: var(--red); }
+        .worker-name { flex: 1; font-size: 13px; font-family: 'SF Mono', Monaco, monospace; }
+        .worker-hashrate { font-size: 13px; color: var(--green); font-family: 'SF Mono', Monaco, monospace; }
+
+        .block-row {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        .block-row:last-child { border-bottom: none; }
+        .block-height {
+            background: var(--green);
+            color: #000;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            font-family: 'SF Mono', Monaco, monospace;
+            margin-right: 12px;
+        }
+        .block-info { flex: 1; }
+        .block-time { font-size: 12px; color: var(--text-dim); }
+        .block-reward { font-size: 14px; font-weight: 600; color: var(--green); font-family: 'SF Mono', Monaco, monospace; }
+
+        .pool-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .pool-stat {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px;
+            text-align: center;
+        }
+        .pool-stat-value { font-size: 14px; font-weight: 600; color: var(--green); font-family: 'SF Mono', Monaco, monospace; }
+        .pool-stat-label { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+
+        .connect-info {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+        }
+        .connect-info h3 { font-size: 14px; margin-bottom: 12px; }
+        .connect-url {
+            background: #000;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 12px;
+            word-break: break-all;
+            color: var(--green);
+        }
+
+        .nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--card);
+            border-top: 1px solid var(--border);
+            display: flex;
+            padding: 8px 16px;
+            padding-bottom: max(8px, env(safe-area-inset-bottom));
+        }
+        .nav-item {
+            flex: 1;
+            text-align: center;
+            padding: 8px;
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 11px;
+        }
+        .nav-item.active { color: var(--green); }
+        .nav-item svg { display: block; margin: 0 auto 4px; width: 24px; height: 24px; }
+
+        @media (min-width: 600px) {
+            body { max-width: 500px; margin: 0 auto; }
+            .stats-grid { grid-template-columns: repeat(4, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">F</div>
+        <h1>Forge Pool</h1>
+        <div class="status">
+            <div class="status-dot"></div>
+            <span>9h 34m</span>
+        </div>
+    </div>
+
+    <div class="pool-stats">
+        <div class="pool-stat">
+            <div class="pool-stat-value">2.69 PH</div>
+            <div class="pool-stat-label">Pool</div>
+        </div>
+        <div class="pool-stat">
+            <div class="pool-stat-value">37</div>
+            <div class="pool-stat-label">Miners</div>
+        </div>
+        <div class="pool-stat">
+            <div class="pool-stat-value">15</div>
+            <div class="pool-stat-label">Blocks</div>
+        </div>
+    </div>
+
+    <div class="balance-card">
+        <div class="balance-label">Balance</div>
+        <div class="balance-value">547.86 <small>BCH2</small></div>
+        <div class="balance-sub">+ 49.75 BCH2 immature</div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value">1.42 TH</div>
+            <div class="stat-label">Hashrate</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">8</div>
+            <div class="stat-label">Workers</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">29.8K</div>
+            <div class="stat-label">Shares</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">2.52B</div>
+            <div class="stat-label">Best Share</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-header">
+            Workers <span class="count">8/9</span>
+        </div>
+        <div class="worker-row">
+            <div class="worker-status online"></div>
+            <div class="worker-name">T21_1.solo</div>
+            <div class="worker-hashrate">198 TH/s</div>
+        </div>
+        <div class="worker-row">
+            <div class="worker-status online"></div>
+            <div class="worker-name">T21_2.solo</div>
+            <div class="worker-hashrate">195 TH/s</div>
+        </div>
+        <div class="worker-row">
+            <div class="worker-status online"></div>
+            <div class="worker-name">S19K_1.solo</div>
+            <div class="worker-hashrate">142 TH/s</div>
+        </div>
+        <div class="worker-row">
+            <div class="worker-status online"></div>
+            <div class="worker-name">S19K_2.solo</div>
+            <div class="worker-hashrate">140 TH/s</div>
+        </div>
+        <div class="worker-row">
+            <div class="worker-status offline"></div>
+            <div class="worker-name">S19K_3.solo</div>
+            <div class="worker-hashrate">--</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-header">
+            Recent Blocks <span class="count">15</span>
+        </div>
+        <div class="block-row">
+            <div class="block-height">55531</div>
+            <div class="block-info">
+                <div class="block-time">2 minutes ago</div>
+            </div>
+            <div class="block-reward">50.00 BCH2</div>
+        </div>
+        <div class="block-row">
+            <div class="block-height">55489</div>
+            <div class="block-info">
+                <div class="block-time">1 hour ago</div>
+            </div>
+            <div class="block-reward">50.00 BCH2</div>
+        </div>
+        <div class="block-row">
+            <div class="block-height">55465</div>
+            <div class="block-info">
+                <div class="block-time">3 hours ago</div>
+            </div>
+            <div class="block-reward">50.00 BCH2</div>
+        </div>
+    </div>
+
+    <div class="connect-info">
+        <h3>Connect Your Miners</h3>
+        <div class="connect-url">stratum+tcp://umbrel.local:3333</div>
+    </div>
+
+    <nav class="nav">
+        <a href="#" class="nav-item active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+            Home
+        </a>
+        <a href="#" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+            Refresh
+        </a>
+        <a href="#" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            Blocks
+        </a>
+    </nav>
+</body>
+</html>

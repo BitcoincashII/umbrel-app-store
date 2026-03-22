@@ -24,6 +24,8 @@ services:
       - redis
     ports:
       - "127.0.0.1:8080:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ${APP_DATA_DIR}/data:/data
     environment:
@@ -38,6 +40,7 @@ services:
       RPC_PORT: "8342"
       RPC_USER: umbrel
       RPC_PASSWORD: moneyprintergobrrr
+      STRATUM_INTERNAL_URL: http://host.docker.internal:3337
 
   stratum:
     image: ghcr.io/bitcoincashii/forge-pool-stratum:latest

@@ -1,0 +1,32 @@
+# Forge Pool Stratum Configuration
+# Auto-generated from environment variables
+
+pool:
+  name: "Forge Pool"
+  address: "${POOL_ADDRESS}"
+  fee: ${POOL_FEE}
+
+stratum:
+  host: "0.0.0.0"
+  port: 3333
+  difficulty: 100000
+  vardiff:
+    enabled: true
+    min: 10000
+    max: 10000000
+    target_time: 10
+    retarget_time: 60
+    variance: 30
+
+node:
+  host: "${RPC_HOST}"
+  port: "${RPC_PORT}"
+  user: "${RPC_USER}"
+  password: "${RPC_PASSWORD}"
+
+api:
+  url: "${API_URL}"
+
+logging:
+  level: "info"
+  format: "json"

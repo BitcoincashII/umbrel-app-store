@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Forge Pool</title>
+    <style>
+        :root {
+            --bg: #0a0a0a;
+            --card: #111;
+            --border: #222;
+            --text: #fff;
+            --text-dim: #888;
+            --green: #0ac18e;
+            --green-dark: #089e74;
+            --red: #ff4757;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 16px;
+            padding-bottom: 80px;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .logo {
+            width: 40px;
+            height: 40px;
+            background: var(--green);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+            color: #000;
+        }
+        .header h1 { font-size: 20px; font-weight: 600; }
+        .header .status {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--green);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .balance-card {
+            background: linear-gradient(135deg, var(--green), var(--green-dark));
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 16px;
+        }
+        .balance-label { font-size: 13px; opacity: 0.8; margin-bottom: 4px; }
+        .balance-value { font-size: 36px; font-weight: 700; font-family: 'SF Mono', monospace; }
+        .balance-value small { font-size: 16px; opacity: 0.8; }
+        .balance-sub { font-size: 13px; opacity: 0.7; margin-top: 8px; }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .stat-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+        }
+        .stat-value {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--green);
+            font-family: 'SF Mono', monospace;
+        }
+        .stat-label {
+            font-size: 11px;
+            color: var(--text-dim);
+            margin-top: 4px;
+            text-transform: uppercase;
+        }
+
+        .section {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+        .section-header {
+            padding: 14px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .section-header .count {
+            background: var(--border);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+
+        .worker-row {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        .worker-row:last-child { border-bottom: none; }
+        .worker-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 12px;
+        }
+        .worker-status.online { background: var(--green); box-shadow: 0 0 8px var(--green); }
+        .worker-status.offline { background: var(--red); }
+        .worker-name { flex: 1; font-size: 13px; font-family: 'SF Mono', monospace; }
+        .worker-hashrate { font-size: 13px; color: var(--green); font-family: 'SF Mono', monospace; }
+
+        .block-row {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        .block-row:last-child { border-bottom: none; }
+        .block-height {
+            background: var(--green);
+            color: #000;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            font-family: 'SF Mono', monospace;
+            margin-right: 12px;
+        }
+        .block-info { flex: 1; }
+        .block-time { font-size: 12px; color: var(--text-dim); }
+        .block-reward { font-size: 14px; font-weight: 600; color: var(--green); font-family: 'SF Mono', monospace; }
+
+        .pool-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .pool-stat {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px;
+            text-align: center;
+        }
+        .pool-stat-value { font-size: 14px; font-weight: 600; color: var(--green); font-family: 'SF Mono', monospace; }
+        .pool-stat-label { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+
+        .connect-info {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+        }
+        .connect-info h3 { font-size: 14px; margin-bottom: 12px; }
+        .connect-url {
+            background: #000;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: 'SF Mono', monospace;
+            font-size: 12px;
+            word-break: break-all;
+            color: var(--green);
+        }
+
+        .nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--card);
+            border-top: 1px solid var(--border);
+            display: flex;
+            padding: 8px 16px;
+            padding-bottom: max(8px, env(safe-area-inset-bottom));
+        }
+        .nav-item {
+            flex: 1;
+            text-align: center;
+            padding: 8px;
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 11px;
+        }
+        .nav-item.active { color: var(--green); }
+        .nav-item svg { display: block; margin: 0 auto 4px; width: 24px; height: 24px; }
+
+        .empty { padding: 32px; text-align: center; color: var(--text-dim); font-size: 13px; }
+        .loading { opacity: 0.5; }
+
+        @media (min-width: 600px) {
+            body { max-width: 500px; margin: 0 auto; }
+            .stats-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">F</div>
+        <h1>Forge Pool</h1>
+        <div class="status">
+            <div class="status-dot"></div>
+            <span id="uptime">--</span>
+        </div>
+    </div>
+
+    <div class="pool-stats">
+        <div class="pool-stat">
+            <div class="pool-stat-value" id="poolHashrate">--</div>
+            <div class="pool-stat-label">Pool</div>
+        </div>
+        <div class="pool-stat">
+            <div class="pool-stat-value" id="poolMiners">--</div>
+            <div class="pool-stat-label">Miners</div>
+        </div>
+        <div class="pool-stat">
+            <div class="pool-stat-value" id="poolBlocks">--</div>
+            <div class="pool-stat-label">Blocks</div>
+        </div>
+    </div>
+
+    <div class="balance-card">
+        <div class="balance-label">Balance</div>
+        <div class="balance-value" id="balance">0.00 <small>BCH2</small></div>
+        <div class="balance-sub" id="balanceSub">+ 0.00 BCH2 immature</div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value" id="hashrate">--</div>
+            <div class="stat-label">Hashrate</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="workers">--</div>
+            <div class="stat-label">Workers</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="shares">--</div>
+            <div class="stat-label">Shares</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="bestShare">--</div>
+            <div class="stat-label">Best Share</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-header">
+            Workers <span class="count" id="workerCount">0</span>
+        </div>
+        <div id="workersList">
+            <div class="empty">No workers connected</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-header">
+            Recent Blocks <span class="count" id="blockCount">0</span>
+        </div>
+        <div id="blocksList">
+            <div class="empty">No blocks found yet</div>
+        </div>
+    </div>
+
+    <div class="connect-info">
+        <h3>Connect Your Miners</h3>
+        <div class="connect-url" id="stratumUrl">stratum+tcp://loading...:3333</div>
+    </div>
+
+    <nav class="nav">
+        <a href="#" class="nav-item active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+            Home
+        </a>
+        <a href="#" class="nav-item" onclick="location.reload()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+            Refresh
+        </a>
+        <a href="#blocks" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            Blocks
+        </a>
+    </nav>
+
+    <script>
+        const API = '/api/v1';
+        let poolAddress = '';
+
+        function formatHashrate(h) {
+            if (h >= 1e15) return (h / 1e15).toFixed(2) + ' PH/s';
+            if (h >= 1e12) return (h / 1e12).toFixed(2) + ' TH/s';
+            if (h >= 1e9) return (h / 1e9).toFixed(2) + ' GH/s';
+            if (h >= 1e6) return (h / 1e6).toFixed(2) + ' MH/s';
+            return h.toFixed(0) + ' H/s';
+        }
+
+        function formatNumber(n) {
+            if (n >= 1e12) return (n / 1e12).toFixed(2) + 'T';
+            if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';
+            if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+            if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+            return n.toString();
+        }
+
+        function timeAgo(date) {
+            const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+            if (seconds < 60) return seconds + 's ago';
+            if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+            if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
+            return Math.floor(seconds / 86400) + 'd ago';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        async function fetchStats() {
+            try {
+                const res = await fetch(API + '/stats');
+                const data = await res.json();
+
+                document.getElementById('poolHashrate').textContent = data.hashrate || '--';
+                document.getElementById('poolMiners').textContent = data.miners || 0;
+                document.getElementById('poolBlocks').textContent = data.blocksFound || 0;
+                document.getElementById('uptime').textContent = data.uptime?.split('.')[0] || '--';
+
+                poolAddress = data.poolAddress || '';
+                const host = location.hostname === 'localhost' ? 'umbrel.local' : location.hostname;
+                document.getElementById('stratumUrl').textContent = 'stratum+tcp://' + host + ':3333';
+            } catch (e) {
+                console.error('Failed to fetch stats:', e);
+            }
+        }
+
+        async function fetchMiner() {
+            try {
+                // For personal pool, use first miner or pool address
+                const statsRes = await fetch(API + '/stats');
+                const stats = await statsRes.json();
+
+                // Try to get first miner
+                const minersRes = await fetch(API + '/miners?limit=1');
+                const miners = await minersRes.json();
+
+                if (miners && miners.length > 0) {
+                    const minerRes = await fetch(API + '/miners/' + encodeURIComponent(miners[0].address));
+                    const miner = await minerRes.json();
+
+                    document.getElementById('balance').innerHTML =
+                        (miner.matureBalance || 0).toFixed(2) + ' <small>BCH2</small>';
+                    document.getElementById('balanceSub').textContent =
+                        '+ ' + (miner.immatureBalance || 0).toFixed(2) + ' BCH2 immature';
+                    document.getElementById('hashrate').textContent = formatHashrate((miner.hashrate5m || 0) * 1e12);
+                    document.getElementById('workers').textContent = miner.onlineWorkers || 0;
+                    document.getElementById('shares').textContent = formatNumber(miner.validShares || 0);
+                    document.getElementById('bestShare').textContent = formatNumber(miner.bestDiff || 0);
+
+                    // Fetch workers
+                    const workersRes = await fetch(API + '/miners/' + encodeURIComponent(miners[0].address) + '/workers');
+                    const workers = await workersRes.json();
+                    renderWorkers(workers);
+
+                    // Fetch blocks
+                    const blocksRes = await fetch(API + '/miners/' + encodeURIComponent(miners[0].address) + '/solo-blocks');
+                    const blocks = await blocksRes.json();
+                    renderBlocks(blocks);
+                }
+            } catch (e) {
+                console.error('Failed to fetch miner:', e);
+            }
+        }
+
+        function renderWorkers(workers) {
+            const list = document.getElementById('workersList');
+            const count = document.getElementById('workerCount');
+
+            if (!workers || workers.length === 0) {
+                list.innerHTML = '<div class="empty">No workers connected</div>';
+                count.textContent = '0';
+                return;
+            }
+
+            const online = workers.filter(w => w.online).length;
+            count.textContent = online + '/' + workers.length;
+
+            list.innerHTML = workers.slice(0, 10).map(w => `
+                <div class="worker-row">
+                    <div class="worker-status ${w.online ? 'online' : 'offline'}"></div>
+                    <div class="worker-name">${escapeHtml(w.name || 'default')}</div>
+                    <div class="worker-hashrate">${escapeHtml(formatHashrate((w.hashrate || 0) * 1e12))}</div>
+                </div>
+            `).join('');
+        }
+
+        function renderBlocks(blocks) {
+            const list = document.getElementById('blocksList');
+            const count = document.getElementById('blockCount');
+
+            if (!blocks || blocks.length === 0) {
+                list.innerHTML = '<div class="empty">No blocks found yet</div>';
+                count.textContent = '0';
+                return;
+            }
+
+            count.textContent = blocks.length;
+
+            list.innerHTML = blocks.slice(0, 5).map(b => `
+                <div class="block-row">
+                    <div class="block-height">${escapeHtml(String(b.height))}</div>
+                    <div class="block-info">
+                        <div class="block-time">${escapeHtml(timeAgo(b.timestamp))}</div>
+                    </div>
+                    <div class="block-reward">${escapeHtml((b.reward || 50).toFixed(2))} BCH2</div>
+                </div>
+            `).join('');
+        }
+
+        // Initial load
+        fetchStats();
+        fetchMiner();
+
+        // Refresh every 30 seconds
+        setInterval(fetchStats, 30000);
+        setInterval(fetchMiner, 30000);
+    </script>
+</body>
+</html>
