@@ -100,9 +100,23 @@ services:
     volumes:
       - ${APP_DATA_DIR}/postgres:/var/lib/postgresql/data
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
-      - ./db/fix-password.sh:/usr/local/bin/fix-password.sh
-    command: >
-      sh -c "sh /usr/local/bin/fix-password.sh; docker-entrypoint.sh postgres"
+    command:
+      - sh
+      - -c
+      - |
+        if [ -f "/var/lib/postgresql/data/PG_VERSION" ]; then
+          echo "Existing database detected, fixing password..."
+          cp /var/lib/postgresql/data/pg_hba.conf /var/lib/postgresql/data/pg_hba.conf.bak
+          echo "local all all trust" > /var/lib/postgresql/data/pg_hba.conf
+          echo "host all all 127.0.0.1/32 trust" >> /var/lib/postgresql/data/pg_hba.conf
+          echo "host all all ::1/128 trust" >> /var/lib/postgresql/data/pg_hba.conf
+          pg_ctl -D /var/lib/postgresql/data -o "-c listen_addresses=''" -w start
+          psql -U forge -d forgepool -c "ALTER USER forge WITH PASSWORD 'moneyprintergobrrr';" 2>/dev/null || true
+          pg_ctl -D /var/lib/postgresql/data -w stop
+          mv /var/lib/postgresql/data/pg_hba.conf.bak /var/lib/postgresql/data/pg_hba.conf
+          echo "Password fix complete."
+        fi
+        exec docker-entrypoint.sh postgres
 
   redis:
     image: redis:7-alpine

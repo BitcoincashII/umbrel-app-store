@@ -4,7 +4,7 @@ name: Forge Pool
 tagline: Self-hosted BCH2 mining pool
 icon: https://raw.githubusercontent.com/BitcoincashII/BCH2-Graphics/main/bch2_logo.png
 category: bitcoin
-version: "1.2.40"
+version: "1.2.41"
 port: 3334
 description: >-
   Run your own BCH2 mining pool with a single click.
@@ -18,7 +18,7 @@ support: https://github.com/BitcoincashII/forge-pool-umbrel/issues
 gallery:
   - https://raw.githubusercontent.com/BitcoincashII/BCH2-Graphics/main/bch2_logo.png
 releaseNotes: >-
-  - Auto-fix database password on upgrade
+  - Fix database password recovery script permissions
 dependencies: []
 path: ""
 defaultUsername: ""
