@@ -65,7 +65,7 @@ services:
       RPC_USER: umbrel
       RPC_PASSWORD: moneyprintergobrrr
       DB_HOST: 127.0.0.1
-      DB_PORT: "5432"
+      DB_PORT: "5433"
       DB_USER: forge
       DB_PASSWORD: moneyprintergobrrr
       DB_NAME: forgepool
@@ -92,7 +92,7 @@ services:
     image: postgres:15-alpine
     restart: on-failure
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:5433:5432"
     environment:
       POSTGRES_USER: forge
       POSTGRES_PASSWORD: moneyprintergobrrr
