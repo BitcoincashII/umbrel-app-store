@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS shares (
     miner_address VARCHAR(255) NOT NULL,
     worker_name VARCHAR(255),
     difficulty NUMERIC(20,8) NOT NULL,
+    share_diff NUMERIC(30,8) DEFAULT 0,
     is_solo BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT NOW()
 );
@@ -56,5 +57,11 @@ CREATE INDEX IF NOT EXISTS idx_payouts_confirmed ON payouts(confirmed);
 -- Migration for existing databases: add paid_at if missing
 DO $$ BEGIN
     ALTER TABLE payouts ADD COLUMN IF NOT EXISTS paid_at TIMESTAMP;
+EXCEPTION WHEN others THEN NULL;
+END $$;
+
+-- Migration for existing databases: add share_diff column
+DO $$ BEGIN
+    ALTER TABLE shares ADD COLUMN IF NOT EXISTS share_diff NUMERIC(30,8) DEFAULT 0;
 EXCEPTION WHEN others THEN NULL;
 END $$;

@@ -4,7 +4,7 @@ name: Forge Pool
 tagline: Self-hosted BCH2 mining pool
 icon: https://raw.githubusercontent.com/BitcoincashII/BCH2-Graphics/main/bch2_logo.png
 category: bitcoin
-version: "1.2.43"
+version: "1.2.44"
 port: 3334
 description: >-
   Run your own BCH2 mining pool with a single click.
@@ -18,7 +18,7 @@ support: https://github.com/BitcoincashII/forge-pool-umbrel/issues
 gallery:
   - https://raw.githubusercontent.com/BitcoincashII/BCH2-Graphics/main/bch2_logo.png
 releaseNotes: >-
-  - Full relay node (no pruning, P2P enabled on port 8339)
+  - Best share now persists across restarts
 dependencies: []
 path: ""
 defaultUsername: ""
