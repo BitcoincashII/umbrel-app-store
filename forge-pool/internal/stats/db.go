@@ -74,6 +74,75 @@ func InitDB(connStr string) error {
 	}
 
 	log.Printf("✅ Connected to PostgreSQL (pool: %d open, %d idle)", maxOpen, maxIdle)
+
+	// Auto-create tables if they don't exist
+	if err := createTablesIfNotExist(); err != nil {
+		log.Printf("ERROR: failed to create database tables: %v", err)
+		return fmt.Errorf("failed to create tables: %w", err)
+	}
+
+	return nil
+}
+
+func createTablesIfNotExist() error {
+	tables := []string{
+		`CREATE TABLE IF NOT EXISTS miners (
+			id SERIAL PRIMARY KEY,
+			address VARCHAR(255) NOT NULL UNIQUE,
+			solo_mining BOOLEAN DEFAULT FALSE,
+			manual_diff NUMERIC(20,8) DEFAULT 0,
+			min_payout NUMERIC(20,8) DEFAULT 5.0,
+			created_at TIMESTAMP DEFAULT NOW(),
+			updated_at TIMESTAMP DEFAULT NOW()
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_miners_address ON miners(address)`,
+		`CREATE TABLE IF NOT EXISTS blocks (
+			id SERIAL PRIMARY KEY,
+			height INTEGER NOT NULL,
+			hash VARCHAR(64) NOT NULL UNIQUE,
+			miner_address VARCHAR(255),
+			worker_name VARCHAR(255),
+			reward NUMERIC(20,8) DEFAULT 50,
+			is_solo BOOLEAN DEFAULT FALSE,
+			created_at TIMESTAMP DEFAULT NOW()
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_blocks_height ON blocks(height)`,
+		`CREATE INDEX IF NOT EXISTS idx_blocks_miner ON blocks(miner_address)`,
+		`CREATE TABLE IF NOT EXISTS shares (
+			id BIGSERIAL PRIMARY KEY,
+			miner_address VARCHAR(255) NOT NULL,
+			worker_name VARCHAR(255),
+			difficulty NUMERIC(20,8) NOT NULL,
+			share_diff NUMERIC(30,8) DEFAULT 0,
+			is_solo BOOLEAN DEFAULT FALSE,
+			created_at TIMESTAMP DEFAULT NOW()
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_shares_miner ON shares(miner_address)`,
+		`CREATE INDEX IF NOT EXISTS idx_shares_time ON shares(created_at DESC)`,
+		// Migration: add share_diff column to existing tables
+		`ALTER TABLE shares ADD COLUMN IF NOT EXISTS share_diff NUMERIC(30,8) DEFAULT 0`,
+		`CREATE TABLE IF NOT EXISTS payouts (
+			id SERIAL PRIMARY KEY,
+			miner_address VARCHAR(255) NOT NULL,
+			block_height INTEGER,
+			amount NUMERIC(20,8) NOT NULL,
+			txid VARCHAR(64),
+			confirmed BOOLEAN DEFAULT FALSE,
+			is_solo BOOLEAN DEFAULT FALSE,
+			created_at TIMESTAMP DEFAULT NOW(),
+			paid_at TIMESTAMP
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_payouts_miner ON payouts(miner_address)`,
+		`CREATE INDEX IF NOT EXISTS idx_payouts_confirmed ON payouts(confirmed)`,
+	}
+
+	for i, stmt := range tables {
+		if _, err := db.Exec(stmt); err != nil {
+			log.Printf("Failed to execute schema statement %d: %v", i, err)
+			return err
+		}
+	}
+	log.Printf("✅ Database schema verified")
 	return nil
 }
 
@@ -764,6 +833,42 @@ func LoadAllMinerSettings() map[string]*MinerSettings {
 	return result
 }
 
+// MinerListEntry represents a miner in the list
+type MinerListEntry struct {
+	Address    string  `json:"address"`
+	SoloMining bool    `json:"solo_mining"`
+	Hashrate   float64 `json:"hashrate"`
+}
+
+// GetMinersListDB returns a list of miners from database with optional limit
+func GetMinersListDB(limit int) []MinerListEntry {
+	if db == nil {
+		return []MinerListEntry{}
+	}
+
+	query := `SELECT address, solo_mining FROM miners ORDER BY updated_at DESC`
+	if limit > 0 {
+		query += fmt.Sprintf(" LIMIT %d", limit)
+	}
+
+	rows, err := db.Query(query)
+	if err != nil {
+		log.Printf("Error getting miners list: %v", err)
+		return []MinerListEntry{}
+	}
+	defer rows.Close()
+
+	miners := make([]MinerListEntry, 0)
+	for rows.Next() {
+		var m MinerListEntry
+		if err := rows.Scan(&m.Address, &m.SoloMining); err != nil {
+			continue
+		}
+		miners = append(miners, m)
+	}
+	return miners
+}
+
 // GetMinerPayoutsDB returns payout history from database
 func GetMinerPayoutsDB(minerID string) ([]PayoutRecord, int, float64) {
 	if db == nil {
@@ -863,16 +968,48 @@ func GetMinerSoloPayoutsDB(minerID string) ([]PayoutRecord, int, float64) {
 }
 
 // SaveShare saves a PPLNS share to the database for reward distribution
-func SaveShare(minerAddress string, workerName string, difficulty float64, isSolo bool) error {
+func SaveShare(minerAddress string, workerName string, difficulty float64, actualDiff float64, isSolo bool) error {
 	if db == nil {
 		return nil
 	}
 
 	_, err := db.Exec(`
-		INSERT INTO shares (miner_address, worker_name, difficulty, is_solo)
-		VALUES ($1, $2, $3, $4)`,
-		minerAddress, workerName, difficulty, isSolo)
+		INSERT INTO shares (miner_address, worker_name, difficulty, share_diff, is_solo)
+		VALUES ($1, $2, $3, $4, $5)`,
+		minerAddress, workerName, difficulty, actualDiff, isSolo)
 	return err
+}
+
+// GetMinerBestDiff returns the best (highest) share difficulty for a miner from the database
+func GetMinerBestDiff(minerAddress string) float64 {
+	if db == nil {
+		return 0
+	}
+
+	var bestDiff float64
+	err := db.QueryRow(`
+		SELECT COALESCE(MAX(share_diff), 0) FROM shares WHERE miner_address = $1`,
+		minerAddress).Scan(&bestDiff)
+	if err != nil {
+		return 0
+	}
+	return bestDiff
+}
+
+// GetWorkerBestDiff returns the best (highest) share difficulty for a specific worker
+func GetWorkerBestDiff(minerAddress string, workerName string) float64 {
+	if db == nil {
+		return 0
+	}
+
+	var bestDiff float64
+	err := db.QueryRow(`
+		SELECT COALESCE(MAX(share_diff), 0) FROM shares WHERE miner_address = $1 AND worker_name = $2`,
+		minerAddress, workerName).Scan(&bestDiff)
+	if err != nil {
+		return 0
+	}
+	return bestDiff
 }
 
 // PPLNSShare represents a miner's share contribution in the PPLNS window

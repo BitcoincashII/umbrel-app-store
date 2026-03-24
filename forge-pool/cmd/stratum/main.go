@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -270,6 +271,46 @@ func getRPCCredentials() (string, string) {
 	return user, pass
 }
 
+// PoolConfig holds user-configurable pool settings from Umbrel UI
+type PoolConfig struct {
+	PoolWallet  string  `json:"pool_wallet"`
+	PoolFee     float64 `json:"pool_fee"`
+	SoloFee     float64 `json:"solo_fee"`
+	MinPayout   float64 `json:"min_payout"`
+	StratumPort int     `json:"stratum_port"`
+}
+
+// loadPoolConfigFromJSON reads pool settings from pool-config.json (Umbrel settings)
+func loadPoolConfigFromJSON() *PoolConfig {
+	dataDir := os.Getenv("DATA_DIR")
+	if dataDir == "" {
+		dataDir = "/data"
+	}
+	configPath := filepath.Join(dataDir, "config", "pool-config.json")
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return nil
+	}
+	var cfg PoolConfig
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return nil
+	}
+	if cfg.PoolWallet != "" {
+		fmt.Printf("Loaded pool config from JSON: address=%s fee=%.2f solo_fee=%.2f min_payout=%.2f\n",
+			cfg.PoolWallet, cfg.PoolFee, cfg.SoloFee, cfg.MinPayout)
+	}
+	return &cfg
+}
+
+// loadPoolAddressFromConfig reads pool_wallet from pool-config.json (Umbrel settings)
+func loadPoolAddressFromConfig() string {
+	cfg := loadPoolConfigFromJSON()
+	if cfg != nil {
+		return cfg.PoolWallet
+	}
+	return ""
+}
+
 func rpcCall(url, method string, params []interface{}) (interface{}, error) {
 	reqBody, err := json.Marshal(map[string]interface{}{
 		"jsonrpc": "1.0",
@@ -314,6 +355,51 @@ func rpcCall(url, method string, params []interface{}) (interface{}, error) {
 
 
 // bitsToDifficulty converts compact "bits" from block template to difficulty
+// NodeSyncInfo holds blockchain sync status
+type NodeSyncInfo struct {
+	Blocks   int64
+	Headers  int64
+	Progress float64
+	Synced   bool
+}
+
+// checkNodeSync verifies the node is synced and ready for mining
+func checkNodeSync(rpcURL string) (*NodeSyncInfo, error) {
+	result, err := rpcCall(rpcURL, "getblockchaininfo", []interface{}{})
+	if err != nil {
+		return nil, fmt.Errorf("getblockchaininfo failed: %w", err)
+	}
+
+	info, ok := result.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("unexpected response type: %T", result)
+	}
+
+	blocks := int64(0)
+	headers := int64(0)
+	progress := 0.0
+
+	if b, ok := info["blocks"].(float64); ok {
+		blocks = int64(b)
+	}
+	if h, ok := info["headers"].(float64); ok {
+		headers = int64(h)
+	}
+	if p, ok := info["verificationprogress"].(float64); ok {
+		progress = p
+	}
+
+	// Node is synced if blocks == headers and progress > 99.9%
+	synced := blocks > 0 && blocks >= headers-1 && progress > 0.999
+
+	return &NodeSyncInfo{
+		Blocks:   blocks,
+		Headers:  headers,
+		Progress: progress,
+		Synced:   synced,
+	}, nil
+}
+
 func bitsToDifficulty(bitsHex string) float64 {
 	bits, err := strconv.ParseUint(bitsHex, 16, 32)
 	if err != nil || bits == 0 {
@@ -402,9 +488,16 @@ func main() {
 		logger.Fatal("Failed to load config", zap.Error(err))
 	}
 
+	// Check for user-configured port from pool config file
+	stratumPort := config.GetInt("stratum.port")
+	if poolCfg := loadPoolConfigFromJSON(); poolCfg != nil && poolCfg.StratumPort > 0 {
+		stratumPort = poolCfg.StratumPort
+		logger.Info("Using stratum port from user config", zap.Int("port", stratumPort))
+	}
+
 	serverConfig := &stratum.ServerConfig{
 		Host:               config.GetString("stratum.host"),
-		Port:               config.GetInt("stratum.port"),
+		Port:               stratumPort,
 		MaxConnections:     config.GetInt("stratum.max_connections"),
 		BanDuration:        config.GetDuration("stratum.ban_duration"),
 		MaxSharesPerSecond: config.GetInt("stratum.max_shares_per_second"),
@@ -422,16 +515,25 @@ func main() {
 		ServerName:         "main",
 	}
 
-	// Build RPC URL from config
-	nodeHost := config.GetString("node.host")
-	nodePort := config.GetInt("node.port")
-	nodeSSL := config.GetBool("node.use_ssl")
+	// Build RPC URL from environment or config
+	nodeHost := os.Getenv("RPC_HOST")
+	if nodeHost == "" {
+		nodeHost = config.GetString("node.host")
+	}
 	if nodeHost == "" {
 		nodeHost = "127.0.0.1"
 	}
-	if nodePort == 0 {
-		nodePort = 8342
+	nodePort := 0
+	if p := os.Getenv("RPC_PORT"); p != "" {
+		nodePort, _ = strconv.Atoi(p)
 	}
+	if nodePort == 0 {
+		nodePort = config.GetInt("node.port")
+	}
+	if nodePort == 0 {
+		nodePort = 8332
+	}
+	nodeSSL := config.GetBool("node.use_ssl")
 	protocol := "http"
 	if nodeSSL {
 		protocol = "https"
@@ -443,16 +545,41 @@ func main() {
 
 	// Load pool configuration
 	poolAddress = config.GetString("pool.address")
+	if poolAddress == "" {
+		// Try reading from pool-config.json (Umbrel settings)
+		poolAddress = loadPoolAddressFromConfig()
+	}
+	if poolAddress == "" {
+		logger.Fatal("❌ POOL_ADDRESS is required. Set your BCH2 wallet address in Settings before mining.")
+	}
+	// Validate address format
+	if !strings.HasPrefix(poolAddress, "bitcoincashii:q") {
+		logger.Fatal("❌ Invalid pool address format. Must be a BCH2 address starting with 'bitcoincashii:q'",
+			zap.String("address", poolAddress))
+	}
+
+	// Load defaults from stratum.yaml
 	poolFee = config.GetFloat64("pool.fee")
 	soloFee = config.GetFloat64("pool.solo_fee")
 	blockReward = config.GetFloat64("pool.block_reward")
 	minPayout = config.GetFloat64("pool.min_payout")
 	pplnsWindow = config.GetInt("pool.pplns_window")
+
+	// Override with user settings from pool-config.json (Umbrel UI)
+	// Note: fees can be 0 (free pool), so always apply if config exists
+	if userConfig := loadPoolConfigFromJSON(); userConfig != nil {
+		poolFee = userConfig.PoolFee
+		soloFee = userConfig.SoloFee
+		if userConfig.MinPayout >= 0.1 {
+			minPayout = userConfig.MinPayout
+		}
+	}
+
 	if pplnsWindow <= 0 {
 		pplnsWindow = 100000 // Default PPLNS window
 	}
 
-	logger.Info("Pool configuration loaded",
+	logger.Info("✅ Pool configuration loaded",
 		zap.String("address", poolAddress),
 		zap.Float64("fee", poolFee),
 		zap.Float64("solo_fee", soloFee),
@@ -474,7 +601,7 @@ func main() {
 		zap.Int("target_time", serverConfig.TargetShareTime),
 		zap.Int("retarget_time", serverConfig.RetargetTime))
 
-	jobManager = mining.NewJobManager(rpcURL, rpcUser, rpcPass, poolAddress)
+	jobManager = mining.NewJobManager(rpcURL, rpcUser, rpcPass, poolAddress, serverConfig.ExtraNonce1Size, serverConfig.ExtraNonce2Size)
 
 	shareProcessor := &BlockFindingShareProcessor{logger: logger}
 	// Create API-backed miner settings store
@@ -569,6 +696,9 @@ func main() {
 
 		var lastHeight int64
 		var lastJobTime time.Time
+		var nodeReady bool
+		var lastSyncLog time.Time
+		var lastStatusLog time.Time
 
 		for {
 			select {
@@ -576,10 +706,60 @@ func main() {
 				logger.Info("Job broadcast loop shutting down")
 				return
 			case <-ticker.C:
+				// Periodic status log every 60 seconds
+				if time.Since(lastStatusLog) >= 60*time.Second {
+					stats := stratumServer.GetStats()
+					logger.Info("📊 Stratum status",
+						zap.Int64("connections", stats.ActiveConnections),
+						zap.Int64("valid_shares", stats.ValidShares),
+						zap.Int64("invalid_shares", stats.InvalidShares),
+						zap.Int64("blocks_found", stats.BlocksFound),
+						zap.Int64("height", lastHeight),
+						zap.Bool("node_ready", nodeReady))
+					lastStatusLog = time.Now()
+				}
+				// Check if node is synced before attempting block templates
+				if !nodeReady {
+					syncInfo, err := checkNodeSync(rpcURL)
+					if err != nil {
+						if time.Since(lastSyncLog) > 30*time.Second {
+							logger.Warn("⏳ Waiting for node connection...", zap.Error(err))
+							lastSyncLog = time.Now()
+						}
+						continue
+					}
+					if !syncInfo.Synced {
+						if time.Since(lastSyncLog) > 30*time.Second {
+							logger.Info("⏳ Node syncing...",
+								zap.Int64("blocks", syncInfo.Blocks),
+								zap.Int64("headers", syncInfo.Headers),
+								zap.Float64("progress", syncInfo.Progress*100))
+							lastSyncLog = time.Now()
+						}
+						continue
+					}
+					nodeReady = true
+					logger.Info("✅ Node synced and ready!", zap.Int64("height", syncInfo.Blocks))
+				}
+
 				template, err := jobManager.GetBlockTemplate()
 				if err != nil {
-					logger.Error("Failed to get block template", zap.Error(err))
+					// Check if node became unsynced
+					if strings.Contains(err.Error(), "connection") || strings.Contains(err.Error(), "reset") {
+						nodeReady = false
+						logger.Warn("Node connection lost, waiting for reconnect", zap.Error(err))
+					} else {
+						logger.Error("Failed to get block template", zap.Error(err))
+					}
 					continue
+				}
+
+				// Log first successful template fetch
+				if lastHeight == 0 {
+					logger.Info("📦 First block template received",
+						zap.Int64("height", template.Height),
+						zap.Int("tx_count", len(template.Transactions)),
+						zap.String("bits", template.Bits))
 				}
 
 				// Update network difficulty from block template bits (actual next-block target)
@@ -754,8 +934,8 @@ func (p *BlockFindingShareProcessor) ProcessShare(ctx context.Context, share *st
 	stats.GetManager().UpdateWorker(share.MinerID, share.WorkerName, true, share.Difficulty, share.ActualDiff)
 
 	// Save share to database for PPLNS distribution
-	// Use target difficulty as the credited work amount
-	if err := stats.SaveShare(share.MinerID, share.WorkerName, share.Difficulty, share.IsSolo); err != nil {
+	// Use target difficulty as the credited work amount, also save actual diff for best share tracking
+	if err := stats.SaveShare(share.MinerID, share.WorkerName, share.Difficulty, share.ActualDiff, share.IsSolo); err != nil {
 		p.logger.Warn("Failed to save share to DB", zap.Error(err))
 	}
 
@@ -1152,9 +1332,10 @@ func internalAuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		}
 		remoteIP = strings.Trim(remoteIP, "[]") // Remove IPv6 brackets
 
-		// Strict localhost check
+		// Strict localhost check - also allow Docker bridge networks (172.x.x.x, 10.x.x.x)
 		isLocalhost := remoteIP == "127.0.0.1" || remoteIP == "::1" || remoteIP == "localhost"
-		if !isLocalhost {
+		isDockerNetwork := strings.HasPrefix(remoteIP, "172.") || strings.HasPrefix(remoteIP, "10.")
+		if !isLocalhost && !isDockerNetwork {
 			log.Printf("⚠️ SECURITY: Blocked internal API access from external IP: %s (path: %s)", remoteIP, r.URL.Path)
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
@@ -1440,9 +1621,9 @@ func startStatsServer() {
 		})
 	}))
 
-	// Listen only on localhost for internal endpoints
-	log.Printf("Internal stats server starting on 127.0.0.1:3337")
-	if err := http.ListenAndServe("127.0.0.1:3337", nil); err != nil {
+	// Listen on all interfaces for internal endpoints (needed for Docker networking)
+	log.Printf("Internal stats server starting on 0.0.0.0:3337")
+	if err := http.ListenAndServe("0.0.0.0:3337", nil); err != nil {
 		log.Printf("ERROR: Internal stats server failed: %v", err)
 	}
 }
@@ -1464,7 +1645,7 @@ func (p *V2ShareProcessor) ProcessShare(ctx context.Context, share *stratumv2.Sh
 	stats.GetManager().UpdateWorker(share.MinerID, share.WorkerName, true, share.Difficulty, share.ActualDiff)
 
 	// Save share to database
-	if err := stats.SaveShare(share.MinerID, share.WorkerName, share.Difficulty, share.IsSolo); err != nil {
+	if err := stats.SaveShare(share.MinerID, share.WorkerName, share.Difficulty, share.ActualDiff, share.IsSolo); err != nil {
 		p.logger.Warn("Failed to save V2 share to DB", zap.Error(err))
 	}
 

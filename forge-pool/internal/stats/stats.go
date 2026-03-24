@@ -121,11 +121,16 @@ func (m *StatsManager) UpdateWorker(minerID, workerName string, valid bool, targ
 	key := minerID + ":" + workerName
 	w, exists := m.workers[key]
 	if !exists {
+		// Load best diff from database for this worker (survives restarts)
+		dbBestDiff := GetWorkerBestDiff(minerID, workerName)
 		w = &WorkerStats{
-			MinerID:     minerID,
-			WorkerName:  workerName,
-			ConnectedAt: time.Now(),
-			ShareBuffer: NewCircularShareBuffer(MaxSharesPerWorker), // Fixed-size buffer
+			MinerID:       minerID,
+			WorkerName:    workerName,
+			ConnectedAt:   time.Now(),
+			ShareBuffer:   NewCircularShareBuffer(MaxSharesPerWorker), // Fixed-size buffer
+			BestDiff:      dbBestDiff,                                  // Load from DB
+			RoundBestDiff: dbBestDiff,                                  // Load from DB
+			ATHDiff:       dbBestDiff,                                  // ATH is at least the DB best
 		}
 		m.workers[key] = w
 	}
