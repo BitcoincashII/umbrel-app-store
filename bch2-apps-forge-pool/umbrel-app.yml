@@ -18,8 +18,9 @@ support: https://github.com/BitcoincashII/forge-pool-umbrel/issues
 gallery:
   - https://raw.githubusercontent.com/BitcoincashII/BCH2-Graphics/main/bch2_logo.png
 releaseNotes: >-
-  - CRITICAL FIX: Fixed block submission failing with "Block decode failed"
-  - Coinbase now uses configured extranonce sizes instead of hardcoded values
+  - Fix blocks not being saved to database
+  - Fix balance/payouts not displaying
+  - Add missing status column to blocks table
 dependencies: []
 path: ""
 defaultUsername: ""
