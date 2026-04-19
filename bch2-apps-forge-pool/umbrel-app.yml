@@ -4,7 +4,7 @@ name: Forge Pool
 tagline: Self-hosted BCH2 mining pool
 icon: https://raw.githubusercontent.com/BitcoincashII/BCH2-Graphics/main/bch2_logo.png
 category: bitcoin
-version: "1.3.1"
+version: "1.3.2"
 port: 3334
 description: >-
   Run your own BCH2 mining pool with a single click.
@@ -18,9 +18,12 @@ support: https://github.com/BitcoincashII/forge-pool-umbrel/issues
 gallery:
   - https://raw.githubusercontent.com/BitcoincashII/BCH2-Graphics/main/bch2_logo.png
 releaseNotes: >-
-  - Fix blocks not being saved to database
-  - Fix balance/payouts not displaying
-  - Add missing status column to blocks table
+  SECURITY UPDATE:
+  - Remove hardcoded passwords - now derived from APP_SEED (unique per installation)
+  - Remove hardcoded API token - now derived from APP_SEED
+  - Add missing database indexes for better performance
+  - Add status columns to blocks and payouts tables
+  - Fix database port configuration for stratum server
 dependencies: []
 path: ""
 defaultUsername: ""

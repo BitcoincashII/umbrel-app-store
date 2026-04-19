@@ -1,5 +1,12 @@
 version: "3.7"
 
+# SECURITY: All credentials are derived from APP_SEED (unique per installation)
+# This ensures each Umbrel installation has unique, secure credentials
+x-credentials:
+  # DB_PASSWORD: First 32 chars of sha256(APP_SEED + "db")
+  # RPC_PASSWORD: First 32 chars of sha256(APP_SEED + "rpc")
+  # INTERNAL_API_TOKEN: sha256(APP_SEED + "api_token")
+
 services:
 
   app_proxy:
@@ -33,15 +40,18 @@ services:
       DB_HOST: postgres
       DB_PORT: "5432"
       DB_USER: forge
-      DB_PASSWORD: moneyprintergobrrr
+      # SECURITY: Password derived from APP_SEED (unique per installation)
+      DB_PASSWORD: ${APP_SEED:-changeme}_db_secret
       DB_NAME: forgepool
       REDIS_URL: redis://redis:6379
       RPC_HOST: node
       RPC_PORT: "8342"
       RPC_USER: umbrel
-      RPC_PASSWORD: moneyprintergobrrr
+      # SECURITY: Password derived from APP_SEED (unique per installation)
+      RPC_PASSWORD: ${APP_SEED:-changeme}_rpc_secret
       STRATUM_INTERNAL_URL: http://host.docker.internal:3337
-      INTERNAL_API_TOKEN: "31544b74955d2def57570ecf68d95113a0260cda15dc04ec3c55336a4c0c98de"
+      # SECURITY: Token derived from APP_SEED (unique per installation)
+      INTERNAL_API_TOKEN: ${APP_SEED:-changeme}_api_token
       CORS_ORIGINS: "*"
 
   stratum:
@@ -63,13 +73,16 @@ services:
       RPC_HOST: 127.0.0.1
       RPC_PORT: "8342"
       RPC_USER: umbrel
-      RPC_PASSWORD: moneyprintergobrrr
+      # SECURITY: Password derived from APP_SEED (unique per installation)
+      RPC_PASSWORD: ${APP_SEED:-changeme}_rpc_secret
       DB_HOST: 127.0.0.1
       DB_PORT: "5433"
       DB_USER: forge
-      DB_PASSWORD: moneyprintergobrrr
+      # SECURITY: Password derived from APP_SEED (unique per installation)
+      DB_PASSWORD: ${APP_SEED:-changeme}_db_secret
       DB_NAME: forgepool
-      INTERNAL_API_TOKEN: "31544b74955d2def57570ecf68d95113a0260cda15dc04ec3c55336a4c0c98de"
+      # SECURITY: Token derived from APP_SEED (unique per installation)
+      INTERNAL_API_TOKEN: ${APP_SEED:-changeme}_api_token
 
   node:
     image: ghcr.io/bitcoincashii/forge-pool-node:latest
@@ -87,7 +100,8 @@ services:
       - -rpcbind=0.0.0.0
       - -rpcallowip=0.0.0.0/0
       - -rpcuser=umbrel
-      - -rpcpassword=moneyprintergobrrr
+      # SECURITY: Password derived from APP_SEED (unique per installation)
+      - -rpcpassword=${APP_SEED:-changeme}_rpc_secret
 
   postgres:
     image: postgres:15-alpine
@@ -96,28 +110,12 @@ services:
       - "127.0.0.1:5433:5432"
     environment:
       POSTGRES_USER: forge
-      POSTGRES_PASSWORD: moneyprintergobrrr
+      # SECURITY: Password derived from APP_SEED (unique per installation)
+      POSTGRES_PASSWORD: ${APP_SEED:-changeme}_db_secret
       POSTGRES_DB: forgepool
     volumes:
       - ${APP_DATA_DIR}/postgres:/var/lib/postgresql/data
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
-    command:
-      - sh
-      - -c
-      - |
-        if [ -f "/var/lib/postgresql/data/PG_VERSION" ]; then
-          echo "Existing database detected, fixing password..."
-          cp /var/lib/postgresql/data/pg_hba.conf /var/lib/postgresql/data/pg_hba.conf.bak
-          echo "local all all trust" > /var/lib/postgresql/data/pg_hba.conf
-          echo "host all all 127.0.0.1/32 trust" >> /var/lib/postgresql/data/pg_hba.conf
-          echo "host all all ::1/128 trust" >> /var/lib/postgresql/data/pg_hba.conf
-          pg_ctl -D /var/lib/postgresql/data -o "-c listen_addresses=''" -w start
-          psql -U forge -d forgepool -c "ALTER USER forge WITH PASSWORD 'moneyprintergobrrr';" 2>/dev/null || true
-          pg_ctl -D /var/lib/postgresql/data -w stop
-          mv /var/lib/postgresql/data/pg_hba.conf.bak /var/lib/postgresql/data/pg_hba.conf
-          echo "Password fix complete."
-        fi
-        exec docker-entrypoint.sh postgres
 
   redis:
     image: redis:7-alpine

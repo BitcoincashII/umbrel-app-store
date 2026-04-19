@@ -35,4 +35,4 @@ node:
 
 database:
   host: "127.0.0.1"  # For network_mode: host
-  port: 5432
+  port: 5433  # Mapped port from postgres container
