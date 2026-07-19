@@ -1,0 +1,43 @@
+manifestVersion: 1
+id: bch2-apps-forge-solo
+name: Forge Solo
+tagline: Solo-mine BCH2 at home and merge-mine 1175
+icon: https://raw.githubusercontent.com/BitcoincashII/BCH2-Graphics/main/bch2_logo.png
+category: bitcoin
+version: "1.0.0"
+port: 3080
+description: >-
+  Point your ASIC or Bitaxe at your own Umbrel and mine BCH2 SOLO — you keep the
+  full block reward (no pool fee, no PPLNS). Every share also merge-mines 1175
+  (ESF) at no extra hashrate cost, so a lucky block pays you on both chains.
+
+  This is a home miner, not a production pool: one household, solo only.
+
+  Includes:
+  - A built-in BCH2 full node (auto-syncs, pruned for home use)
+  - A built-in 1175 (ESF) node for AuxPoW merge-mining
+  - A simple solo dashboard: hashrate, effort, your blocks, payouts
+  - Automatic solo payouts to your address
+  - Variable difficulty (works with small ASICs like the Bitaxe)
+
+  Set your BCH2 payout address in the app config (POOL_ADDRESS) — every block's
+  reward is paid there; the miner's worker name is just a label. Then point your
+  miner at  stratum+tcp://<your-umbrel-ip>:3333 , set your 1175 payout address, and
+  you're mining.
+
+developer: BCH2 Team
+website: https://hashforge.bch2.org
+repo: https://github.com/BitcoincashII/forge-solo
+support: https://github.com/BitcoincashII/forge-solo/issues
+gallery:
+  - https://hashforge.bch2.org/screenshots/solo-dashboard.png
+  - https://hashforge.bch2.org/screenshots/solo-effort.png
+  - https://hashforge.bch2.org/screenshots/settings.png
+releaseNotes: >-
+  First release of Forge Solo: solo-only home mining for BCH2 with 1175
+  merge-mining, built on the hardened Forge Pool engine, with per-install
+  generated secrets and no host-exposed node RPC.
+dependencies: []
+path: ""
+defaultUsername: ""
+defaultPassword: ""

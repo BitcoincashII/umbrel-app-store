@@ -1,0 +1,202 @@
+version: "3.8"
+
+# Forge Solo — a self-hosted SOLO mining app for home miners.
+# Mine BCH2 solo to your OWN address (you keep the full block reward minus a tiny
+# solo fee), and merge-mine 1175 (ESF) at no extra hashrate cost. This is NOT a
+# production/PPLNS pool — it is meant for one household's miners.
+#
+# Security: all secrets are generated per-install by exports.sh (never hardcoded).
+# The node RPC ports are NOT published to the host; they are reachable only on the
+# private forge_network and are pinned to that subnet via -rpcallowip.
+
+x-forge-images:
+  node: &node-image ghcr.io/bitcoincashii/forge-solo-node:1.0.0@sha256:889f32f050cc356db7965975120ae6bb13181d5dd1cab5f39426588ff569b789
+  node1175: &node1175-image ghcr.io/bitcoincashii/forge-solo-node1175:1.0.0@sha256:55829ddb3f3418cdaf481d007752021851e01099c0a839eff7544f1e8f9dc325
+  stratum: &stratum-image ghcr.io/bitcoincashii/forge-solo-stratum:1.0.0@sha256:ae6add3b7cd7ab6b97a3c6ff07b90bde949889db433f9d84402b7bcf8ec074ed
+  api: &api-image ghcr.io/bitcoincashii/forge-solo-api:1.0.0@sha256:d34b0ab91f1f34b4f219eddd6a18dcf7a349662ef78c6043e9df8aaf89f549f0
+  web: &web-image ghcr.io/bitcoincashii/forge-solo-web:1.0.0@sha256:391a8690dd06090cb3d73a4a2446677c202f18dc294d9067755a71239cacc845
+
+services:
+  # BCH2 full node (primary chain) — auto-syncs on first run, pruned for home use.
+  node:
+    image: *node-image
+    container_name: forge_solo_node
+    restart: unless-stopped
+    stop_grace_period: 1m
+    volumes:
+      - ${APP_DATA_DIR}/node:/data/.bch2
+    environment:
+      - RPC_USER=forge
+      - RPC_PASSWORD=${APP_NODE_RPC_PASSWORD}
+    command:
+      - -datadir=/data/.bch2
+      - -printtoconsole
+      - -prune=2000
+      - -server=1
+      - -rpcbind=0.0.0.0
+      - -rpcallowip=10.21.21.0/24
+      - -rpcuser=forge
+      - -rpcpassword=${APP_NODE_RPC_PASSWORD}
+      - -zmqpubhashblock=tcp://0.0.0.0:28332
+      - -zmqpubrawblock=tcp://0.0.0.0:28332
+    networks:
+      forge_network:
+    healthcheck:
+      test: ["CMD-SHELL", "bitcoincashII-cli -datadir=/data/.bch2 -rpcuser=forge -rpcpassword=$$RPC_PASSWORD getblockchaininfo || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 180s
+
+  # 1175 (ESF) full node — merge-mined alongside BCH2 (AuxPoW).
+  node1175:
+    image: *node1175-image
+    container_name: forge_solo_node1175
+    restart: unless-stopped
+    stop_grace_period: 1m
+    volumes:
+      - ${APP_DATA_DIR}/node1175:/data/.elevenseventyfive
+    environment:
+      - RPC_USER=forge1175
+      - RPC_PASSWORD=${APP_1175_RPC_PASSWORD}
+    command:
+      - -datadir=/data/.elevenseventyfive
+      - -printtoconsole
+      - -server=1
+      - -rpcbind=0.0.0.0
+      - -rpcallowip=10.21.21.0/24
+      - -rpcuser=forge1175
+      - -rpcpassword=${APP_1175_RPC_PASSWORD}
+      - -wallet=pool
+    networks:
+      forge_network:
+    healthcheck:
+      test: ["CMD-SHELL", "elevenseventyfive-cli -datadir=/data/.elevenseventyfive -rpcuser=forge1175 -rpcpassword=$$RPC_PASSWORD getblockchaininfo || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 180s
+
+  postgres:
+    image: timescale/timescaledb:2.17.2-pg16@sha256:4e459e217f00cbb09920c34d245501e63427e6767a495de57ce76823ff280f12
+    container_name: forge_solo_postgres
+    restart: unless-stopped
+    stop_grace_period: 1m
+    environment:
+      POSTGRES_USER: forge
+      POSTGRES_PASSWORD: ${APP_DB_PASSWORD}
+      POSTGRES_DB: forgesolo
+    volumes:
+      - ${APP_DATA_DIR}/postgres:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      forge_network:
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U forge -d forgesolo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  api:
+    image: *api-image
+    container_name: forge_solo_api
+    restart: unless-stopped
+    depends_on:
+      node:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=forge
+      - DB_PASSWORD=${APP_DB_PASSWORD}
+      - DB_NAME=forgesolo
+      - DB_SSLMODE=disable
+      - RPC_URL=http://node:8342
+      - RPC_USER=forge
+      - RPC_PASSWORD=${APP_NODE_RPC_PASSWORD}
+      - STRATUM_INTERNAL_URL=http://stratum:3337
+      - INTERNAL_API_TOKEN=${APP_INTERNAL_API_TOKEN}
+      - CORS_ORIGINS=
+    networks:
+      forge_network:
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/api/v1/stats || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  stratum:
+    image: *stratum-image
+    container_name: forge_solo_stratum
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+      node1175:
+        condition: service_healthy
+    ports:
+      # The ONLY host-published port besides the web UI: your miners connect here.
+      - "${STRATUM_PORT:-3333}:3333"
+    environment:
+      # --- read directly from env by the Go code ---
+      - INTERNAL_API_TOKEN=${APP_INTERNAL_API_TOKEN}
+      - API_HOST=0.0.0.0            # bind the internal API so the api container can reach stratum:3337
+      - API_PORT=3337
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=forge
+      - DB_PASSWORD=${APP_DB_PASSWORD}
+      - DB_NAME=forgesolo
+      - DB_SSLMODE=disable
+      - RPC_USER=forge               # primary BCH2 node RPC auth (host/port come from config)
+      - RPC_PASSWORD=${APP_NODE_RPC_PASSWORD}
+      # --- substituted into config.template.yaml by entrypoint (envsubst) ---
+      - NODE_HOST=node
+      - NODE_PORT=8342
+      - ZMQ_ENDPOINT=tcp://node:28332
+      - AUX1175_HOST=node1175
+      - AUX1175_PORT=25359          # 1175 daemon mainnet RPC default (chainparamsbase.cpp)
+      - AUX1175_USER=forge1175
+      - AUX1175_PASSWORD=${APP_1175_RPC_PASSWORD}
+      - AUX1175_WALLET=pool
+      - POOL_ADDRESS=${POOL_ADDRESS:-}
+      - COINBASE_TAG=${COINBASE_TAG:-Forge}
+      - PAYOUT_ADDRESS_1175=${PAYOUT_ADDRESS_1175:-}
+      - MIN_PAYOUT=${MIN_PAYOUT:-1}
+    networks:
+      forge_network:
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 3333 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  web:
+    image: *web-image
+    container_name: forge_solo_web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${APP_PORT:-3080}:80"
+    networks:
+      forge_network:
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:80/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  forge_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.21.21.0/24
