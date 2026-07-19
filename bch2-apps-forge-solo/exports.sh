@@ -5,6 +5,11 @@
 set -eo pipefail
 umask 077   # the secrets file is created 0600 from the start — no world-readable window
 
+# Umbrel does not guarantee APP_DATA_DIR in the exports.sh context and may source this
+# script with `set -u` (nounset) active. exports.sh lives in the app data dir, so derive
+# APP_DATA_DIR from this file's own location when unset — never abort on an unbound var.
+: "${APP_DATA_DIR:=$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)}"
+
 APP_SECRETS_FILE="${APP_DATA_DIR}/.secrets.env"
 
 if [ ! -f "${APP_SECRETS_FILE}" ]; then

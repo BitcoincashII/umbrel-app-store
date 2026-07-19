@@ -4,7 +4,7 @@ name: Forge Solo
 tagline: Solo-mine BCH2 at home and merge-mine 1175
 icon: https://raw.githubusercontent.com/BitcoincashII/BCH2-Graphics/main/bch2_logo.png
 category: bitcoin
-version: "1.0.0"
+version: "1.0.1"
 port: 3080
 description: >-
   Point your ASIC or Bitaxe at your own Umbrel and mine BCH2 SOLO — you keep the
@@ -34,9 +34,9 @@ gallery:
   - https://hashforge.bch2.org/screenshots/solo-effort.png
   - https://hashforge.bch2.org/screenshots/settings.png
 releaseNotes: >-
-  First release of Forge Solo: solo-only home mining for BCH2 with 1175
-  merge-mining, built on the hardened Forge Pool engine, with per-install
-  generated secrets and no host-exposed node RPC.
+  1.0.1 fixes an install failure ("APP_DATA_DIR: unbound variable") — exports.sh
+  now derives its data dir when Umbrel does not provide it. Solo-only home mining
+  for BCH2 with 1175 merge-mining, per-install secrets, no host-exposed node RPC.
 dependencies: []
 path: ""
 defaultUsername: ""
