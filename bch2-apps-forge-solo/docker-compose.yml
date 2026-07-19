@@ -86,8 +86,10 @@ services:
     image: ghcr.io/bitcoincashii/forge-solo-api:1.0.0@sha256:d34b0ab91f1f34b4f219eddd6a18dcf7a349662ef78c6043e9df8aaf89f549f0
     restart: unless-stopped
     depends_on:
-      - node
-      - postgres
+      postgres:
+        condition: service_healthy
+      node:
+        condition: service_started
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432
@@ -100,6 +102,8 @@ services:
       - RPC_PASSWORD=${APP_NODE_RPC_PASSWORD}
       - STRATUM_INTERNAL_URL=http://stratum:3337
       - INTERNAL_API_TOKEN=${APP_INTERNAL_API_TOKEN}
+      - POOL_ADDRESS=${POOL_ADDRESS:-}
+      - HOME_APP=1
       - CORS_ORIGINS=
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/api/v1/stats || exit 1"]
@@ -112,12 +116,17 @@ services:
     image: ghcr.io/bitcoincashii/forge-solo-stratum:1.0.0@sha256:ae6add3b7cd7ab6b97a3c6ff07b90bde949889db433f9d84402b7bcf8ec074ed
     restart: unless-stopped
     depends_on:
-      - api
-      - node1175
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_started
+      node1175:
+        condition: service_started
     ports:
       - "3333:3333"
     environment:
       - INTERNAL_API_TOKEN=${APP_INTERNAL_API_TOKEN}
+      - INTERNAL_STATS_HOST=0.0.0.0
       - API_HOST=0.0.0.0
       - API_PORT=3337
       - DB_HOST=postgres
