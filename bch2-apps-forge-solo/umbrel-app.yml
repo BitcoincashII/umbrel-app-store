@@ -4,7 +4,7 @@ name: Forge Solo
 tagline: Solo-mine BCH2 at home and merge-mine 1175
 icon: https://raw.githubusercontent.com/BitcoincashII/BCH2-Graphics/main/bch2_logo.png
 category: bitcoin
-version: "1.0.3"
+version: "1.0.4"
 port: 3080
 description: >-
   Point your ASIC or Bitaxe at your own Umbrel and mine BCH2 SOLO — you keep the
@@ -34,10 +34,12 @@ gallery:
   - https://hashforge.bch2.org/screenshots/solo-effort.png
   - https://hashforge.bch2.org/screenshots/settings.png
 releaseNotes: >-
-  1.0.3 makes the app configurable from the dashboard (set your BCH2 + ESF payout
-  addresses in Settings — no SSH), fixes solo payout settlement, makes the live
-  hashrate/miner stats and settings-save work, and hardens DB startup. Solo-only
-  home mining for BCH2 with 1175 merge-mining, per-install secrets, no host-exposed RPC.
+  1.0.4 fixes a fresh-install failure that could stop a brand-new install at ~1%:
+  per-install secret generation no longer depends on `openssl` (which isn't guaranteed
+  in Umbrel's install context) and uses a portable /dev/urandom + sha256sum generator
+  instead. Existing installs are unaffected. (1.0.3 added dashboard configuration for
+  your BCH2 + ESF payout addresses, solo payout settlement, live stats, settings-save,
+  and DB startup hardening.)
 dependencies: []
 path: ""
 defaultUsername: ""

@@ -14,7 +14,13 @@ APP_SECRETS_FILE="${APP_DATA_DIR}/.secrets.env"
 
 if [ ! -f "${APP_SECRETS_FILE}" ]; then
   mkdir -p "${APP_DATA_DIR}"
-  gen() { openssl rand -hex 32; }
+  # Portable, dependency-free CSPRNG: 32 bytes from /dev/urandom hashed to 64 hex chars.
+  # Deliberately avoids `openssl`, which is NOT guaranteed in Umbrel's exports.sh context.
+  # This block runs ONLY on a fresh install (updaters keep their .secrets.env and skip it),
+  # so an unavailable `openssl` here aborts a brand-new install via `set -e` and shows up as
+  # a crash at ~1%. `head` + `sha256sum` are universal (busybox + coreutils); the bounded
+  # read means no SIGPIPE, so `set -o pipefail` stays happy.
+  gen() { local h; h="$(head -c 32 /dev/urandom | sha256sum)"; printf '%s' "${h:0:64}"; }
   {
     echo "APP_NODE_RPC_PASSWORD=$(gen)"
     echo "APP_1175_RPC_PASSWORD=$(gen)"
