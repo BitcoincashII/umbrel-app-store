@@ -157,7 +157,7 @@ services:
       start_period: 30s
 
   web:
-    image: ghcr.io/bitcoincashii/forge-solo-web:1.0.3@sha256:a03d31bc2fd62b733b7869fdfc0799db9c74a6c6b32b48aa87aa70935126ec03
+    image: ghcr.io/bitcoincashii/forge-solo-web:1.0.6@sha256:a10eef09b00c7729ad3615e7719bff5c1e334ec0432c6365f2edf0dac69f441b
     restart: unless-stopped
     depends_on:
       - api
