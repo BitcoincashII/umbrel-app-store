@@ -4,7 +4,7 @@ name: Forge Solo
 tagline: Solo-mine BCH2 at home and merge-mine 1175
 icon: https://raw.githubusercontent.com/BitcoincashII/BCH2-Graphics/main/bch2_logo.png
 category: bitcoin
-version: "1.0.6"
+version: "1.0.7"
 port: 31175
 description: >-
   Point your ASIC or Bitaxe at your own Umbrel and mine BCH2 SOLO — you keep the
