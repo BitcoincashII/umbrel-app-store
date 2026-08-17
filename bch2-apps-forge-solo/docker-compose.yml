@@ -13,7 +13,7 @@ services:
       APP_PORT: 80
 
   node:
-    image: ghcr.io/bitcoincashii/forge-solo-node:1.0.7@sha256:c7685032871fc1e1938354c5af485e5c619dfa7d7004f3484f6c47e889ec95b5
+    image: ghcr.io/bitcoincashii/forge-solo-node:1.0.8@sha256:f78e628411f062d3d948a3540d1b0aa74e6d0109eac521a221f3727e37cb388b
     restart: unless-stopped
     stop_grace_period: 1m
     volumes:
@@ -40,7 +40,7 @@ services:
       start_period: 180s
 
   node1175:
-    image: ghcr.io/bitcoincashii/forge-solo-node1175:1.0.7@sha256:967c59f1086ca9bcd32036df6a912530da90cb24f14fffbb66d7d0cbd508e6b5
+    image: ghcr.io/bitcoincashii/forge-solo-node1175:1.0.8@sha256:c974f4bd67429eae9f887c2c03c3bff37126e4178b3f26e244cc0b9c03a7b843
     restart: unless-stopped
     stop_grace_period: 1m
     volumes:
@@ -83,7 +83,7 @@ services:
       start_period: 30s
 
   api:
-    image: ghcr.io/bitcoincashii/forge-solo-api:1.0.7@sha256:1961a35b90a2ac37c7cce541318332459dc74c419e1672bcc27afb9f80f4306b
+    image: ghcr.io/bitcoincashii/forge-solo-api:1.0.8@sha256:9751fdb06ad8d72068b0868893106596b01c705c5dec2f80070957622034c6af
     restart: unless-stopped
     depends_on:
       postgres:
@@ -113,7 +113,7 @@ services:
       start_period: 30s
 
   stratum:
-    image: ghcr.io/bitcoincashii/forge-solo-stratum:1.0.7@sha256:f1e599defc1dd2888663ad8ba3a5e4d29ba5443076d202d3fc9b28542af0c180
+    image: ghcr.io/bitcoincashii/forge-solo-stratum:1.0.8@sha256:23e339b0cd1832b2322bc076a190167fa4905cfde2d208e011d35b4e5392aae2
     restart: unless-stopped
     depends_on:
       postgres:
@@ -157,7 +157,7 @@ services:
       start_period: 30s
 
   web:
-    image: ghcr.io/bitcoincashii/forge-solo-web:1.0.7@sha256:b09491b55bd8644bc359ab742c88609205f612b6e7e1fff7f8a334b9444a7907
+    image: ghcr.io/bitcoincashii/forge-solo-web:1.0.8@sha256:63bcf07c71d3a71c95ba4c8198ea2b1a2ba695cbc79b785fdd9e23fec9e275aa
     restart: unless-stopped
     depends_on:
       - api
