@@ -26,13 +26,12 @@ description: >-
   mining.
 
 developer: BCH2 Team
-website: https://hashforge.bch2.org
+website: https://bch2.org
 repo: https://github.com/BitcoincashII/forge-solo
 support: https://github.com/BitcoincashII/forge-solo/issues
-gallery:
-  - https://hashforge.bch2.org/screenshots/solo-dashboard.png
-  - https://hashforge.bch2.org/screenshots/solo-effort.png
-  - https://hashforge.bch2.org/screenshots/settings.png
+# gallery: omitted until screenshots are hosted somewhere the store can reach. The
+# previous URLs pointed at a host that returned 404, so the listing rendered three
+# broken images.
 releaseNotes: >-
   The dashboard's Network Difficulty and Network Hashrate tiles no longer flash 0 during
   brief node-RPC hiccups — they now hold the last good reading, and the dashboard queries
