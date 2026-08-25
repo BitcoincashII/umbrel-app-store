@@ -7,23 +7,25 @@ category: bitcoin
 version: "1.0.8"
 port: 31175
 description: >-
-  Point your ASIC or Bitaxe at your own Umbrel and mine BCH2 SOLO — you keep the
-  full block reward (no pool fee, no PPLNS). Every share also merge-mines 1175
-  (ESF) at no extra hashrate cost, so a lucky block pays you on both chains.
+  Point your ASIC or Bitaxe at your own Umbrel and mine BCH2 SOLO — you keep the full block
+  reward (no pool fee, no PPLNS). Every share also merge-mines 1175 (ESF) at no extra hashrate
+  cost, so a lucky block pays you on both chains.
 
   This is a home miner, not a production pool: one household, solo only.
 
-  Includes:
-  - A built-in BCH2 full node (auto-syncs, pruned for home use)
-  - A built-in 1175 (ESF) node for AuxPoW merge-mining
-  - A simple solo dashboard: hashrate, effort, your blocks, payouts
-  - Automatic solo payouts to your address
-  - Variable difficulty (works with small ASICs like the Bitaxe)
+  Includes: - A built-in BCH2 full node (auto-syncs, pruned for home use) - A built-in 1175
+  (ESF) node for AuxPoW merge-mining - A simple solo dashboard: hashrate, effort, your blocks,
+  payouts - Block rewards paid straight to your address by the coinbase — no payout wallet -
+  Variable difficulty (works with small ASICs like the Bitaxe)
 
-  Open the app and set your BCH2 payout address (and optional 1175/ESF esf1… address)
-  on the Settings page — every block's reward is paid there; the miner's worker name is
-  just a label. Then point your miner at stratum+tcp://<your-umbrel-ip>:3333 and you're
-  mining.
+  To accept inbound peers, forward TCP 8339 (BCH2) and 25360 (1175) in your router. To accept
+  rented hashpower, forward 3333 (Braiins) or 3335 (NiceHash/MiningRigRentals).
+
+  Set your BCH2 payout address on the app's Settings page — every block's reward is paid
+  there; the miner's worker name is just a label. Then point your miner at
+  stratum+tcp://<your-umbrel-ip>:3333 , set your 1175 payout address, and you're mining.
+  Braiins connects each miner individually, so it uses 3333 like your own hardware; NiceHash
+  and MiningRigRentals put the whole order behind one connection, so they use 3335.
 
 developer: BCH2 Team
 website: https://bch2.org
