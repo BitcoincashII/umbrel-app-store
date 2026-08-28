@@ -4,42 +4,52 @@ name: Forge Solo
 tagline: Solo-mine BCH2 at home and merge-mine 1175
 icon: https://raw.githubusercontent.com/BitcoincashII/BCH2-Graphics/main/bch2_logo.png
 category: bitcoin
-version: "1.0.8"
+version: "1.0.9"
+# 31175, not 3080: an Umbrel that already uses 3080 (another app, or a stuck prior
+# install attempt) fails to install this one with "Bind for 0.0.0.0:3080 failed: port is
+# already allocated". The community store moved to 31175 in v1.0.5; this manifest was
+# never updated to match and sat stale through v1.0.8. Dashboard UI port only -- the
+# miner ports are 3333 and 3335 and are unaffected.
 port: 31175
 description: >-
-  Point your ASIC or Bitaxe at your own Umbrel and mine BCH2 SOLO — you keep the full block
-  reward (no pool fee, no PPLNS). Every share also merge-mines 1175 (ESF) at no extra hashrate
-  cost, so a lucky block pays you on both chains.
+  Point your ASIC or Bitaxe at your own Umbrel and mine BCH2 SOLO — you keep the
+  full block reward (no pool fee, no PPLNS). Every share also merge-mines 1175
+  (ESF) at no extra hashrate cost, so a lucky block pays you on both chains.
 
   This is a home miner, not a production pool: one household, solo only.
 
-  Includes: - A built-in BCH2 full node (auto-syncs, pruned for home use) - A built-in 1175
-  (ESF) node for AuxPoW merge-mining - A simple solo dashboard: hashrate, effort, your blocks,
-  payouts - Block rewards paid straight to your address by the coinbase — no payout wallet -
-  Variable difficulty (works with small ASICs like the Bitaxe)
+  Includes:
+  - A built-in BCH2 full node (auto-syncs, pruned for home use)
+  - A built-in 1175 (ESF) node for AuxPoW merge-mining
+  - A simple solo dashboard: hashrate, effort, your blocks, payouts
+  - Block rewards paid straight to your address by the coinbase — no payout wallet
+  - Variable difficulty (works with small ASICs like the Bitaxe)
 
-  To accept inbound peers, forward TCP 8339 (BCH2) and 25360 (1175) in your router. To accept
-  rented hashpower, forward 3333 (Braiins) or 3335 (NiceHash/MiningRigRentals).
+  To accept inbound peers, forward TCP 8339 (BCH2) and 25360 (1175) in your router. To
+  accept rented hashpower, forward 3333 (Braiins) or 3335 (NiceHash/MiningRigRentals).
 
-  Set your BCH2 payout address on the app's Settings page — every block's reward is paid
-  there; the miner's worker name is just a label. Then point your miner at
-  stratum+tcp://<your-umbrel-ip>:3333 , set your 1175 payout address, and you're mining.
-  Braiins connects each miner individually, so it uses 3333 like your own hardware; NiceHash
-  and MiningRigRentals put the whole order behind one connection, so they use 3335.
+  Set your BCH2 payout address on the app's Settings page — every block's reward is
+  paid there; the miner's worker name is just a label. Then point your miner at
+  stratum+tcp://<your-umbrel-ip>:3333 , set your 1175 payout address, and you're
+  mining. Braiins connects each miner individually, so it uses 3333 like your own hardware;
+  NiceHash and MiningRigRentals put the whole order behind one connection, so they use 3335.
 
 developer: BCH2 Team
 website: https://bch2.org
 repo: https://github.com/BitcoincashII/forge-solo
 support: https://github.com/BitcoincashII/forge-solo/issues
 # gallery: omitted until screenshots are hosted somewhere the store can reach. The
-# previous URLs pointed at a host that returned 404, so the listing rendered three
-# broken images.
+# previous URLs 404'd and rendered as broken images in the listing.
 releaseNotes: >-
-  The dashboard's Network Difficulty and Network Hashrate tiles no longer flash 0 during
-  brief node-RPC hiccups — they now hold the last good reading, and the dashboard queries
-  the node more gently. (1.0.7 stopped over-counting shares above a miner's assigned
-  difficulty; 1.0.6 added the color-coded setup banner and stopped misleading network stats
-  while the node is still syncing.)
+  Fixes found by pointing a real rented ASIC at this app on mainnet. The dashboard reported
+  "No miner connected" while a miner on the rental port (3335) was working normally, because
+  only the main port was being counted. MiningRigRentals could not validate the endpoint,
+  because difficulty was not announced until after login. The container's own health check was
+  logging itself once a minute as a failed miner. Earlier in this release: solo blocks now
+  record the reward their own coinbase paid rather than the newest template's; an orphaned
+  block shows as Orphaned instead of a pending payment; Reject % is measured rather than
+  always 0.00%; worker hashrates decay instead of freezing; and the app no longer claims to be
+  mining with nothing connected.
 dependencies: []
 path: ""
 defaultUsername: ""
