@@ -4,7 +4,7 @@ name: Forge Solo
 tagline: Solo-mine BCH2 at home and merge-mine 1175
 icon: https://raw.githubusercontent.com/BitcoincashII/BCH2-Graphics/main/bch2_logo.png
 category: bitcoin
-version: "1.0.10"
+version: "1.0.11"
 # 31175, not 3080: an Umbrel that already uses 3080 (another app, or a stuck prior
 # install attempt) fails to install this one with "Bind for 0.0.0.0:3080 failed: port is
 # already allocated". The community store moved to 31175 in v1.0.5; this manifest was
@@ -41,26 +41,20 @@ support: https://github.com/BitcoincashII/forge-solo/issues
 # gallery: omitted until screenshots are hosted somewhere the store can reach. The
 # previous URLs 404'd and rendered as broken images in the listing.
 releaseNotes: >-
-  The dashboard now tells you what to forward. A banner names the exact ports your node is not
-  reachable on, and a Connect & Network card gives the address to hand a rental marketplace
-  along with live proof of whether each peer-to-peer port is actually open — measured from
-  inbound peers rather than guessed, so it clears itself once a peer gets through.
+  Your node can finally be reached from outside. It never announced an address of its own,
+  so no peer ever learned how to connect in — inbound connections stayed at zero however
+  your router was forwarded, and the notice asking you to open ports could not clear no
+  matter what you did about it. The node now learns the address your peers see you on and
+  announces it from the next start, so a correct port forward attracts the peers it should.
 
-  A rented rig is counted as a rental again. A rig announces itself as the ASIC it is, never as
-  the marketplace that rented it, so the dashboard reported zero rentals while a paid order was
-  mining; rentals are now identified by the port they arrive on.
+  The dashboard knows your public address again. It was reading a field that is always
+  empty inside a container, so the Connect & Network card said "Public address not known
+  yet" and had no endpoint to give a rental marketplace. It now takes the address your
+  peers report back, accepting it only when several of them independently agree.
 
-  Security and stability: the binaries are rebuilt against a patched Go standard library and
-  updated dependencies, closing 30 issues reachable from this code. The mining service and the
-  dashboard API no longer run as root and give up every Linux capability. Memory no longer grows
-  without bound on the rental port, where marketplaces rotate worker names — worker records are
-  now pruned and share buffers allocate as they fill instead of reserving 320 KB per name up
-  front. A single address can no longer take every connection slot and lock your own miners out.
-  The mining service also stopped keeping a copy of your miner's password, which nothing read.
-
-  Removed: an unreachable Stratum V2 server that would have lost a block outright if it were
-  ever switched on, and the last remnants of the old payout-sender, including a database write
-  that had been failing silently on every install.
+  The reachability notice covers BCH2 only. 1175 is merge-mined, and whether its peer port
+  is open has no bearing on your mining, so it no longer raises a warning asking you to
+  forward a second port.
 
 dependencies: []
 path: ""
