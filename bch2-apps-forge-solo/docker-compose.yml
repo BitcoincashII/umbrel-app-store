@@ -13,9 +13,14 @@ services:
       APP_PORT: 80
 
   node:
-    image: ghcr.io/bitcoincashii/forge-solo-node:1.0.8@sha256:f78e628411f062d3d948a3540d1b0aa74e6d0109eac521a221f3727e37cb388b
+    image: ghcr.io/bitcoincashii/forge-solo-node:1.0.10@sha256:2470b9c79b2e2a7975ad67a6131d26de69133d21209f7a5da4e5409134a48023
     restart: unless-stopped
     stop_grace_period: 1m
+    ports:
+      # BCH2 peer-to-peer. Published so the node can ACCEPT inbound peers, not just make
+      # outbound ones. Forward 8339 in your router to actually receive them. The RPC port
+      # is deliberately NOT published -- it stays on the app's private network.
+      - "8339:8339"
     volumes:
       - ${APP_DATA_DIR}/node:/data/.bch2
     environment:
@@ -24,6 +29,7 @@ services:
     command:
       - -datadir=/data/.bch2
       - -printtoconsole
+      - -listen=1                 # accept inbound peers (forward 8339 in your router)
       - -prune=2000
       - -server=1
       - -rpcbind=0.0.0.0
@@ -40,9 +46,12 @@ services:
       start_period: 180s
 
   node1175:
-    image: ghcr.io/bitcoincashii/forge-solo-node1175:1.0.8@sha256:c974f4bd67429eae9f887c2c03c3bff37126e4178b3f26e244cc0b9c03a7b843
+    image: ghcr.io/bitcoincashii/forge-solo-node1175:1.0.10@sha256:9b9772e5bd2e5fd6e42300a5a58af22cb4204ea2106ebaa271a8f94e0cb24b5f
     restart: unless-stopped
     stop_grace_period: 1m
+    ports:
+      # 1175 (ESF) peer-to-peer, same reasoning as the BCH2 node above.
+      - "25360:25360"
     volumes:
       - ${APP_DATA_DIR}/node1175:/data/.elevenseventyfive
     environment:
@@ -51,6 +60,7 @@ services:
     command:
       - -datadir=/data/.elevenseventyfive
       - -printtoconsole
+      - -listen=1                 # accept inbound peers (forward 25360 in your router)
       - -server=1
       - -rpcbind=0.0.0.0
       - -rpcallowip=0.0.0.0/0
@@ -83,7 +93,11 @@ services:
       start_period: 30s
 
   api:
-    image: ghcr.io/bitcoincashii/forge-solo-api:1.0.8@sha256:9751fdb06ad8d72068b0868893106596b01c705c5dec2f80070957622034c6af
+    image: ghcr.io/bitcoincashii/forge-solo-api:1.0.10@sha256:3fcf141c3bf1633bd9bcb9eafca5597fc45a71feb52230bf3009124b45731f2e
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     restart: unless-stopped
     depends_on:
       postgres:
@@ -102,7 +116,20 @@ services:
       - RPC_PASSWORD=${APP_NODE_RPC_PASSWORD}
       - STRATUM_INTERNAL_URL=http://stratum:3337
       - INTERNAL_API_TOKEN=${APP_INTERNAL_API_TOKEN}
+      # Read-only: the dashboard reports whether the 1175 P2P forward is working, which needs
+      # that node's own peer list. Same private network, never published to the host.
+      - AUX1175_URL=http://node1175:25359
+      - AUX1175_USER=forge1175
+      - AUX1175_PASSWORD=${APP_1175_RPC_PASSWORD}
       - POOL_ADDRESS=${POOL_ADDRESS:-}
+      - POOL_NAME=${POOL_NAME:-Forge Solo}
+      # The api reads these as fallbacks for a fresh install; without them here its
+      # fallback branches could never fire, so a user who configured the tag or the 1175
+      # address in the Umbrel app config saw "not configured — merge-mining OFF" while
+      # merge mining was in fact running, and a tag box reading "Forge" while blocks
+      # carried the real one -- which the next Save would then overwrite.
+      - COINBASE_TAG=${COINBASE_TAG:-Forge}
+      - PAYOUT_ADDRESS_1175=${PAYOUT_ADDRESS_1175:-}
       - HOME_APP=1
       - CORS_ORIGINS=
     healthcheck:
@@ -113,7 +140,11 @@ services:
       start_period: 30s
 
   stratum:
-    image: ghcr.io/bitcoincashii/forge-solo-stratum:1.0.8@sha256:23e339b0cd1832b2322bc076a190167fa4905cfde2d208e011d35b4e5392aae2
+    image: ghcr.io/bitcoincashii/forge-solo-stratum:1.0.10@sha256:8703b88ad8c143df0687264f843978fc2391ca767413ad496e84101440dad6e3
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     restart: unless-stopped
     depends_on:
       postgres:
@@ -123,12 +154,24 @@ services:
       node1175:
         condition: service_started
     ports:
-      - "3333:3333"
+      - "3333:3333"   # your own hardware, and Braiins (which connects each miner individually)
+      - "3335:3335"   # proxied rental hashpower: NiceHash / MiningRigRentals
     environment:
       - INTERNAL_API_TOKEN=${APP_INTERNAL_API_TOKEN}
+      # The stats server the api polls. Bound on 0.0.0.0 so the api container can reach it
+      # over the private app network; the port is never published to the host, and the
+      # constant-time internal-token check is what guards it. Must stay in step with the
+      # api's STRATUM_INTERNAL_URL (http://stratum:3337).
       - INTERNAL_STATS_HOST=0.0.0.0
-      - API_HOST=0.0.0.0
-      - API_PORT=3337
+      # Where the stratum would REACH the api, which is a different thing from the line
+      # above: api.exe listens on 8080 (API_LISTEN_PORT), not on 3337. This pointed at
+      # 0.0.0.0:3337 -- the stratum's own stats port, which serves only /internal/* -- so
+      # every /api/v1/miners/.../settings request would have 404ed. It is inert today
+      # because both call sites are gated on !SoloOnly and this app is payout_scheme
+      # "solo", but a wrong value that only a future change would expose is worth not
+      # leaving in place.
+      - API_HOST=api
+      - API_PORT=8080
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_USER=forge
@@ -144,11 +187,9 @@ services:
       - AUX1175_PORT=25359
       - AUX1175_USER=forge1175
       - AUX1175_PASSWORD=${APP_1175_RPC_PASSWORD}
-      - AUX1175_WALLET=pool
       - POOL_ADDRESS=${POOL_ADDRESS:-}
       - COINBASE_TAG=${COINBASE_TAG:-Forge}
       - PAYOUT_ADDRESS_1175=${PAYOUT_ADDRESS_1175:-}
-      - MIN_PAYOUT=${MIN_PAYOUT:-1}
     healthcheck:
       test: ["CMD-SHELL", "nc -z localhost 3333 || exit 1"]
       interval: 30s
@@ -157,7 +198,7 @@ services:
       start_period: 30s
 
   web:
-    image: ghcr.io/bitcoincashii/forge-solo-web:1.0.8@sha256:63bcf07c71d3a71c95ba4c8198ea2b1a2ba695cbc79b785fdd9e23fec9e275aa
+    image: ghcr.io/bitcoincashii/forge-solo-web:1.0.10@sha256:a07fe254cf31ec1c87f4499f1f2c72f9a7337b02b5cc26cb4f5721292645f188
     restart: unless-stopped
     depends_on:
       - api

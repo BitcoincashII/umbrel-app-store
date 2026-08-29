@@ -42,7 +42,6 @@ CREATE TABLE IF NOT EXISTS miners (
     address VARCHAR(255) UNIQUE NOT NULL,
     solo_mining BOOLEAN DEFAULT FALSE,
     manual_diff DECIMAL(20, 8) DEFAULT 0,
-    min_payout DECIMAL(20, 8) DEFAULT 5.0,
     address_1175 TEXT,
     settings_pin_hash TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
