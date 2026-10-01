@@ -4,7 +4,7 @@ name: Forge Solo
 tagline: Solo-mine BCH2 at home and merge-mine 1175
 icon: https://raw.githubusercontent.com/BitcoincashII/BCH2-Graphics/main/bch2_logo.png
 category: bitcoin
-version: "1.0.11"
+version: "1.0.12"
 # 31175, not 3080: an Umbrel that already uses 3080 (another app, or a stuck prior
 # install attempt) fails to install this one with "Bind for 0.0.0.0:3080 failed: port is
 # already allocated". The community store moved to 31175 in v1.0.5; this manifest was
@@ -12,16 +12,18 @@ version: "1.0.11"
 # miner ports are 3333 and 3335 and are unaffected.
 port: 31175
 description: >-
-  Point your ASIC or Bitaxe at your own Umbrel and mine BCH2 SOLO — you keep the
-  full block reward (no pool fee, no PPLNS). Every share also merge-mines 1175
-  (ESF) at no extra hashrate cost, so a lucky block pays you on both chains.
+  Point your ASIC or Bitaxe at your own Umbrel and mine BCH2 on your own node. Solo:
+  a block you find pays you the full reward (no pool fee, no PPLNS), and with a 1175
+  address set every share also merge-mines 1175 (ESF) at no extra hashrate cost. Or
+  TIDES pool: share blocks with other miners through Forge Pool's TIDES window, paid
+  straight from each block's coinbase, still with no fee.
 
-  This is a home miner, not a production pool: one household, solo only.
+  This is a home miner, not a production pool: one household.
 
   Includes:
-  - A built-in BCH2 full node (auto-syncs, pruned for home use)
+  - A built-in BCH2 full node (auto-syncs and keeps the whole chain)
   - A built-in 1175 (ESF) node for AuxPoW merge-mining
-  - A simple solo dashboard: hashrate, effort, your blocks, payouts
+  - A simple dashboard: hashrate, effort, your blocks, payouts, and the TIDES window
   - Block rewards paid straight to your address by the coinbase — no payout wallet
   - Variable difficulty (works with small ASICs like the Bitaxe)
 
@@ -41,20 +43,47 @@ support: https://github.com/BitcoincashII/forge-solo/issues
 # gallery: omitted until screenshots are hosted somewhere the store can reach. The
 # previous URLs 404'd and rendered as broken images in the listing.
 releaseNotes: >-
-  Your node can finally be reached from outside. It never announced an address of its own,
-  so no peer ever learned how to connect in — inbound connections stayed at zero however
-  your router was forwarded, and the notice asking you to open ports could not clear no
-  matter what you did about it. The node now learns the address your peers see you on and
-  announces it from the next start, so a correct port forward attracts the peers it should.
+  Other BCH2 nodes can now connect in to yours. The node could not accept a single inbound
+  IPv4 connection, however your router was forwarded: its Tor listener uses port 8339 too and
+  took it first, so the node's own IPv4 listener on 8339 never started. The node now binds the
+  port itself, and the Tor listener moves to 8340. It also runs as a full node instead of a
+  pruned one: pruning saved no space (the whole chain is about 90 MB), but the DNS seeders that
+  introduce nodes to each other never list a pruned node. Your data is kept as it is; nothing is
+  downloaded again. With 8339 forwarded, expect the first inbound peer within a few hours.
 
-  The dashboard knows your public address again. It was reading a field that is always
-  empty inside a container, so the Connect & Network card said "Public address not known
-  yet" and had no endpoint to give a rental marketplace. It now takes the address your
-  peers report back, accepting it only when several of them independently agree.
+  Forge Solo now works beside apps such as BTCPay Server, Immich and mempool. Its services found
+  each other by names those apps' services also use on Umbrel's shared network, so with one of
+  them installed some database connections and dashboard requests went to the other app and
+  failed.
 
-  The reachability notice covers BCH2 only. 1175 is merge-mined, and whether its peer port
-  is open has no bearing on your mining, so it no longer raises a warning asking you to
-  forward a second port.
+  New: TIDES mode. In Settings, under "How blocks pay", choose Solo — as before, a block you find
+  pays you in full — or TIDES pool. Your node still builds every block, but each block found by a
+  Forge Solo in TIDES mode or by a Forge Gateway pays everyone with work in Forge Pool's TIDES
+  window, straight from its coinbase, and you are paid from every such block found while you have
+  work in the window. No pool wallet, no fee. 1175 merge-mining is off in TIDES mode, and while
+  Forge Pool cannot be reached the app mines solo. The new TIDES page in the app explains it in
+  full, and the dashboard shows your share of the window and what the next pool block pays you.
+
+  Mining fixes. A share is judged by the difficulty its job went out with, not by a newer one the
+  miner had not received yet, so a miner on a weak link has far fewer refused shares. A new payout
+  address applies to the miners already connected, and every miner is credited to your payout
+  address whatever its username. A connection that does not speak stratum is closed at once, so
+  MiningRigRentals' pool check no longer reports your pool as unable to authenticate. One share
+  can no longer be counted twice, and miners on the two ports no longer repeat each other's work.
+
+  New default coinbase tag: //forgesolo//. Blocks your miners find carry it unless you set your
+  own tag in Settings. If yours was still the old default, Forge, this update changes it to
+  //forgesolo//; a tag you chose yourself is kept.
+
+  From this version on, updating or restarting the app stops the mining service cleanly: miners
+  are disconnected within seconds, a block found in those last seconds is still submitted, and in
+  TIDES mode the pool is sent the shares still held. (This update stops the previous version,
+  which may still log an error as it stops.)
+
+  Settings can no longer be changed by another web page you have open, and if the app's database
+  is briefly unavailable, Settings says so instead of showing your settings as empty.
+
+  Forge Solo is now MIT licensed, with credit to OCEAN, who designed DATUM and TIDES.
 
 dependencies: []
 path: ""

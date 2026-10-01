@@ -7,13 +7,19 @@ version: "3.7"
 # service name, and app_proxy fronts the web dashboard (standard Umbrel pattern).
 
 services:
+  # The services reach each other by container name (bch2-apps-forge-solo_<service>_1, the name
+  # umbreld gives every container), never by bare service name. Every Umbrel app joins the one
+  # shared umbrel_main_network, where a bare name such as "postgres", "api" or "node" is also the
+  # alias of other apps' services (BTCPay Server and Immich have a postgres, mempool and LocalAI an
+  # api): a lookup then returns both apps' containers, and in review 22 of 40 fresh database
+  # connections went to the other app's postgres ("role forge does not exist").
   app_proxy:
     environment:
       APP_HOST: bch2-apps-forge-solo_web_1
       APP_PORT: 80
 
   node:
-    image: ghcr.io/bitcoincashii/forge-solo-node:1.0.11@sha256:14ef6bc6a723affc7f4fc89f9adad7237996f286d8e89fc9d35a1059009b2aed
+    image: ghcr.io/bitcoincashii/forge-solo-node:1.0.12@sha256:6598ac97c2525cd217315e5e1a6cc219386bdf4d2c4d218bb046f4341c9263bb
     restart: unless-stopped
     stop_grace_period: 1m
     ports:
@@ -30,7 +36,19 @@ services:
       - -datadir=/data/.bch2
       - -printtoconsole
       - -listen=1                 # accept inbound peers (forward 8339 in your router)
-      - -prune=2000
+      # Bind explicitly. The node's mainnet Tor onion target port is 8339, the same as its P2P
+      # port (chainparamsbase.cpp; upstream uses P2P port + 1), and with no -bind it binds that
+      # onion listener on 127.0.0.1:8339 FIRST, so its own 0.0.0.0:8339 fails ("Unable to bind
+      # to 0.0.0.0:8339 ... probably already running") and no IPv4 peer could ever connect in,
+      # however the router was forwarded. The onion listener moves to 8340.
+      - -bind=0.0.0.0:8339
+      - "-bind=[::]:8339"
+      - -bind=127.0.0.1:8340=onion
+      # Not pruned: the whole chain is ~90 MB, and a pruned node announces itself as
+      # NODE_NETWORK_LIMITED, which the DNS seeders never list -- so it waited on chance
+      # for inbound peers however the router was set up. Earlier releases passed
+      # -prune=2000, but Core prunes nothing below height 200,000, so no datadir was ever
+      # actually pruned and each one starts unpruned as it is.
       - -server=1
       - -rpcbind=0.0.0.0
       - -rpcallowip=0.0.0.0/0
@@ -46,7 +64,7 @@ services:
       start_period: 180s
 
   node1175:
-    image: ghcr.io/bitcoincashii/forge-solo-node1175:1.0.11@sha256:abb5a85d51b624da761fb8d9ceab7ae9b511e6a024fd04f9bbe49149105435fa
+    image: ghcr.io/bitcoincashii/forge-solo-node1175:1.0.12@sha256:6db2288a4efe415f4f55deab80f15073f1af6cbc6f84bbbed76d8e9d27c64d73
     restart: unless-stopped
     stop_grace_period: 1m
     ports:
@@ -84,7 +102,12 @@ services:
       POSTGRES_DB: forgesolo
     volumes:
       - ${APP_DATA_DIR}/postgres:/var/lib/postgresql/data
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      # By its absolute path. Umbrel runs compose with its own fragment file first, and compose
+      # resolves a relative path from the first file's directory: ./init-db.sql named a file in
+      # umbreld's own directory, which does not exist, so Docker created an empty directory there
+      # and postgres failed to read it ("could not read from input file: Is a directory") on
+      # every fresh install. The app's files, this one included, are in APP_DATA_DIR.
+      - ${APP_DATA_DIR}/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U forge -d forgesolo"]
       interval: 10s
@@ -93,7 +116,7 @@ services:
       start_period: 30s
 
   api:
-    image: ghcr.io/bitcoincashii/forge-solo-api:1.0.11@sha256:ce62d7b87ebe762b0a89dec1a584cb1ee4e9a19777f123b2952fac883cc51d8e
+    image: ghcr.io/bitcoincashii/forge-solo-api:1.0.12@sha256:82428bc4299a949c776c8cb7386cc5175f2aec0cdcca50bb927125224c5037f5
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -105,20 +128,20 @@ services:
       node:
         condition: service_started
     environment:
-      - DB_HOST=postgres
+      - DB_HOST=bch2-apps-forge-solo_postgres_1
       - DB_PORT=5432
       - DB_USER=forge
       - DB_PASSWORD=${APP_DB_PASSWORD}
       - DB_NAME=forgesolo
       - DB_SSLMODE=disable
-      - RPC_URL=http://node:8342
+      - RPC_URL=http://bch2-apps-forge-solo_node_1:8342
       - RPC_USER=forge
       - RPC_PASSWORD=${APP_NODE_RPC_PASSWORD}
-      - STRATUM_INTERNAL_URL=http://stratum:3337
+      - STRATUM_INTERNAL_URL=http://bch2-apps-forge-solo_stratum_1:3337
       - INTERNAL_API_TOKEN=${APP_INTERNAL_API_TOKEN}
       # Read-only: the dashboard reports whether the 1175 P2P forward is working, which needs
       # that node's own peer list. Same private network, never published to the host.
-      - AUX1175_URL=http://node1175:25359
+      - AUX1175_URL=http://bch2-apps-forge-solo_node1175_1:25359
       - AUX1175_USER=forge1175
       - AUX1175_PASSWORD=${APP_1175_RPC_PASSWORD}
       - POOL_ADDRESS=${POOL_ADDRESS:-}
@@ -126,9 +149,10 @@ services:
       # The api reads these as fallbacks for a fresh install; without them here its
       # fallback branches could never fire, so a user who configured the tag or the 1175
       # address in the Umbrel app config saw "not configured — merge-mining OFF" while
-      # merge mining was in fact running, and a tag box reading "Forge" while blocks
-      # carried the real one -- which the next Save would then overwrite.
-      - COINBASE_TAG=${COINBASE_TAG:-Forge}
+      # merge mining was in fact running, and a tag box showing the default while blocks
+      # carried the real one -- which the next Save would then overwrite. Empty means
+      # Forge Solo's default tag, //forgesolo//, which the api and stratum both build in.
+      - COINBASE_TAG=${COINBASE_TAG:-}
       - PAYOUT_ADDRESS_1175=${PAYOUT_ADDRESS_1175:-}
       - HOME_APP=1
       - CORS_ORIGINS=
@@ -140,12 +164,15 @@ services:
       start_period: 30s
 
   stratum:
-    image: ghcr.io/bitcoincashii/forge-solo-stratum:1.0.11@sha256:ab95240531b213da14951aba7dc8897d5a1e27ddd70ca0ab5b791aea897731b7
+    image: ghcr.io/bitcoincashii/forge-solo-stratum:1.0.12@sha256:3b75a92739f41b0240a5c04457a23fe965bcd83e08ea5047fe41b944ffeb873c
     security_opt:
       - no-new-privileges:true
     cap_drop:
       - ALL
     restart: unless-stopped
+    # Room to stop both ports (2 s grace each for connected miners) and send the pool the TIDES
+    # shares still queued, instead of Docker's 10 s default killing it part way.
+    stop_grace_period: 30s
     depends_on:
       postgres:
         condition: service_healthy
@@ -170,9 +197,9 @@ services:
       # because both call sites are gated on !SoloOnly and this app is payout_scheme
       # "solo", but a wrong value that only a future change would expose is worth not
       # leaving in place.
-      - API_HOST=api
+      - API_HOST=bch2-apps-forge-solo_api_1
       - API_PORT=8080
-      - DB_HOST=postgres
+      - DB_HOST=bch2-apps-forge-solo_postgres_1
       - DB_PORT=5432
       - DB_USER=forge
       - DB_PASSWORD=${APP_DB_PASSWORD}
@@ -180,15 +207,15 @@ services:
       - DB_SSLMODE=disable
       - RPC_USER=forge
       - RPC_PASSWORD=${APP_NODE_RPC_PASSWORD}
-      - NODE_HOST=node
+      - NODE_HOST=bch2-apps-forge-solo_node_1
       - NODE_PORT=8342
-      - ZMQ_ENDPOINT=tcp://node:28332
-      - AUX1175_HOST=node1175
+      - ZMQ_ENDPOINT=tcp://bch2-apps-forge-solo_node_1:28332
+      - AUX1175_HOST=bch2-apps-forge-solo_node1175_1
       - AUX1175_PORT=25359
       - AUX1175_USER=forge1175
       - AUX1175_PASSWORD=${APP_1175_RPC_PASSWORD}
       - POOL_ADDRESS=${POOL_ADDRESS:-}
-      - COINBASE_TAG=${COINBASE_TAG:-Forge}
+      - COINBASE_TAG=${COINBASE_TAG:-}
       - PAYOUT_ADDRESS_1175=${PAYOUT_ADDRESS_1175:-}
     healthcheck:
       test: ["CMD-SHELL", "nc -z localhost 3333 || exit 1"]
@@ -198,9 +225,9 @@ services:
       start_period: 30s
 
   web:
-    image: ghcr.io/bitcoincashii/forge-solo-web:1.0.11@sha256:79065d9ef1172a6cd487d0bb19d35fbefc593e83be1bfae68d2667f90d0ce0b9
+    image: ghcr.io/bitcoincashii/forge-solo-web:1.0.12@sha256:e9787ad60148371f380cc7616d5586a090b5f9cca43326dcf76ddcf7e1db8333
     restart: unless-stopped
     depends_on:
       - api
     environment:
-      - API_URL=http://api:8080
+      - API_UPSTREAM=bch2-apps-forge-solo_api_1:8080
