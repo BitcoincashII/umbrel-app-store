@@ -1,25 +1,36 @@
-version: "3.7"
-
-# Forge Solo — self-hosted SOLO mining for home miners.
+# Forge Solo: self-hosted SOLO mining for home miners.
 # Mine BCH2 solo to your OWN address and merge-mine 1175 (ESF) at no extra hashrate cost.
 # One household, solo only. All secrets are generated per-install by exports.sh; node RPC
-# ports are never published to the host — services talk over the private app network by
-# service name, and app_proxy fronts the web dashboard (standard Umbrel pattern).
+# ports are never published to the host, and app_proxy fronts the web dashboard (standard
+# Umbrel pattern).
+
+# The app's own containers talk on a network of their own. Every Umbrel app joins the one shared
+# umbrel_main_network by default, so both nodes' RPC and the stratum's stats API were reachable
+# from every other app's containers. Only web is on both networks: umbrelOS reaches the dashboard
+# through it there.
+networks:
+  forge: {}
 
 services:
   # The services reach each other by container name (bch2-apps-forge-solo_<service>_1, the name
-  # umbreld gives every container), never by bare service name. Every Umbrel app joins the one
-  # shared umbrel_main_network, where a bare name such as "postgres", "api" or "node" is also the
-  # alias of other apps' services (BTCPay Server and Immich have a postgres, mempool and LocalAI an
-  # api): a lookup then returns both apps' containers, and in review 22 of 40 fresh database
-  # connections went to the other app's postgres ("role forge does not exist").
+  # umbreld gives every container), never by bare service name. On umbrel_main_network a bare name
+  # such as "postgres", "api" or "node" is also the alias of other apps' services (BTCPay Server and
+  # Immich have a postgres, mempool and LocalAI an api), so a lookup returns both apps' containers.
   app_proxy:
     environment:
       APP_HOST: bch2-apps-forge-solo_web_1
       APP_PORT: 80
 
   node:
-    image: ghcr.io/bitcoincashii/forge-solo-node:1.0.12@sha256:6598ac97c2525cd217315e5e1a6cc219386bdf4d2c4d218bb046f4341c9263bb
+    image: ghcr.io/bitcoincashii/forge-solo-node:1.0.13@sha256:72c37ed966c8d4f9fc8e0ecd19a47fd6d8c325c0682d748401aeee1cfec765c8
+    networks:
+      - forge
+    # At most 30 MB of log: umbrelOS 2.0 keeps up to 100 MB for each container.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     restart: unless-stopped
     stop_grace_period: 1m
     ports:
@@ -34,7 +45,14 @@ services:
       - RPC_PASSWORD=${APP_NODE_RPC_PASSWORD}
     command:
       - -datadir=/data/.bch2
+      - -disablewallet           # no wallet is used; none can be created over RPC either
       - -printtoconsole
+      # Memory: a 100 MB database cache, a 50 MB mempool and a 4 MB signature cache. Core's defaults
+      # (450, 300, 32 MB) are sized for a machine of its own; this node shares one, often a small
+      # board, with the 1175 node and other apps, and its whole UTXO set is about 15 MB.
+      - -dbcache=100
+      - -maxmempool=50
+      - -maxsigcachesize=4
       - -listen=1                 # accept inbound peers (forward 8339 in your router)
       # Bind explicitly. The node's mainnet Tor onion target port is 8339, the same as its P2P
       # port (chainparamsbase.cpp; upstream uses P2P port + 1), and with no -bind it binds that
@@ -54,17 +72,24 @@ services:
       - -rpcallowip=0.0.0.0/0
       - -rpcuser=forge
       - -rpcpassword=${APP_NODE_RPC_PASSWORD}
-      - -zmqpubhashblock=tcp://0.0.0.0:28332
-      - -zmqpubrawblock=tcp://0.0.0.0:28332
+      - -zmqpubhashblock=tcp://0.0.0.0:28332  # the stratum subscribes to block hashes only
     healthcheck:
       test: ["CMD-SHELL", "bitcoincashII-cli -datadir=/data/.bch2 -rpcuser=forge -rpcpassword=$$RPC_PASSWORD getblockchaininfo || exit 1"]
-      interval: 30s
+      interval: 60s
       timeout: 10s
       retries: 5
       start_period: 180s
 
   node1175:
-    image: ghcr.io/bitcoincashii/forge-solo-node1175:1.0.12@sha256:6db2288a4efe415f4f55deab80f15073f1af6cbc6f84bbbed76d8e9d27c64d73
+    image: ghcr.io/bitcoincashii/forge-solo-node1175:1.0.13@sha256:57fb945bd91e90d8f10c22f54b1cee992ead40b4d3439a6e108641f3b712b52e
+    networks:
+      - forge
+    # At most 30 MB of log: umbrelOS 2.0 keeps up to 100 MB for each container.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     restart: unless-stopped
     stop_grace_period: 1m
     ports:
@@ -77,63 +102,116 @@ services:
       - RPC_PASSWORD=${APP_1175_RPC_PASSWORD}
     command:
       - -datadir=/data/.elevenseventyfive
+      - -disablewallet           # no wallet is used; none can be created over RPC either
       - -printtoconsole
+      # Memory: a 100 MB database cache, a 50 MB mempool and a 4 MB signature cache. Core's defaults
+      # (450, 300, 32 MB) are sized for a machine of its own; this node shares one, often a small
+      # board, with the BCH2 node and other apps, and its whole UTXO set is about 7 MB.
+      - -dbcache=100
+      - -maxmempool=50
+      - -maxsigcachesize=4
       - -listen=1                 # accept inbound peers (forward 25360 in your router)
       - -server=1
       - -rpcbind=0.0.0.0
       - -rpcallowip=0.0.0.0/0
       - -rpcuser=forge1175
       - -rpcpassword=${APP_1175_RPC_PASSWORD}
-      - -wallet=pool
     healthcheck:
       test: ["CMD-SHELL", "elevenseventyfive-cli -datadir=/data/.elevenseventyfive -rpcuser=forge1175 -rpcpassword=$$RPC_PASSWORD getblockchaininfo || exit 1"]
-      interval: 30s
+      interval: 60s
       timeout: 10s
       retries: 5
       start_period: 180s
 
+  # The database server of 1.0.12 and earlier, kept by name only. Its container has the same name
+  # as the one 1.0.12 ran, so an update made while that one still runs replaces it: compose stops
+  # it first, giving PostgreSQL its clean shutdown, and only then starts this and, after it, the
+  # move below. Without a service of this name the old server would go on running on the old
+  # data beside the move's own. This one does nothing and exits.
   postgres:
-    image: timescale/timescaledb:2.17.2-pg16@sha256:4e459e217f00cbb09920c34d245501e63427e6767a495de57ce76823ff280f12
-    restart: unless-stopped
+    image: ghcr.io/bitcoincashii/forge-solo-migrate:1.0.13@sha256:b3567c836560ae583058fb95c4381abf656a20a329e65c603e04b19069468d62
+    command: ["noop"]
+    restart: "no"
+    network_mode: none
+    user: "65534:65534"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     stop_grace_period: 1m
-    environment:
-      POSTGRES_USER: forge
-      POSTGRES_PASSWORD: ${APP_DB_PASSWORD}
-      POSTGRES_DB: forgesolo
+    # At most 30 MB of log: umbrelOS 2.0 keeps up to 100 MB for each container.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Moves the PostgreSQL data of 1.0.12 and earlier (postgres/) into db/forgesolo.db, once, and
+  # merges what both recorded after a return to 1.0.12 and back. It runs at every start, before
+  # the api and the stratum, and exits: at once when there is nothing to do. It writes what it did
+  # to db/migration-status.json. A move that fails replaces nothing and still exits 0, so the
+  # dashboard can say why; only an interruption holds the api and the stratum back.
+  # As root, with only what it needs: to start PostgreSQL as the old data's owner (SETUID, SETGID)
+  # and stop it (KILL), to read that data (DAC_OVERRIDE), and to give the database's files to
+  # 10001:10001, the api's and the stratum's user (CHOWN, FOWNER).
+  migrate:
+    image: ghcr.io/bitcoincashii/forge-solo-migrate:1.0.13@sha256:b3567c836560ae583058fb95c4381abf656a20a329e65c603e04b19069468d62
+    command: ["run", "--db=/data/forgesolo.db", "--pgdata=/pg", "--owner=10001:10001"]
+    restart: "no"
+    network_mode: none
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETUID
+      - SETGID
+      - KILL
+    # Room for PostgreSQL to shut down cleanly when the move is stopped part way.
+    stop_grace_period: 2m
+    # At most 30 MB of log: umbrelOS 2.0 keeps up to 100 MB for each container.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     volumes:
-      - ${APP_DATA_DIR}/postgres:/var/lib/postgresql/data
-      # By its absolute path. Umbrel runs compose with its own fragment file first, and compose
-      # resolves a relative path from the first file's directory: ./init-db.sql named a file in
-      # umbreld's own directory, which does not exist, so Docker created an empty directory there
-      # and postgres failed to read it ("could not read from input file: Is a directory") on
-      # every fresh install. The app's files, this one included, are in APP_DATA_DIR.
-      - ${APP_DATA_DIR}/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U forge -d forgesolo"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+      - ${APP_DATA_DIR}/postgres:/pg
+      - ${APP_DATA_DIR}/db:/data
+    depends_on:
+      postgres:
+        condition: service_completed_successfully
 
   api:
-    image: ghcr.io/bitcoincashii/forge-solo-api:1.0.12@sha256:82428bc4299a949c776c8cb7386cc5175f2aec0cdcca50bb927125224c5037f5
+    image: ghcr.io/bitcoincashii/forge-solo-api:1.0.13@sha256:98bb9645d42fe716214c508f047a9e34a7be23a7c5ce4be3db6722858d6d76c8
+    networks:
+      - forge
+    # At most 30 MB of log: umbrelOS 2.0 keeps up to 100 MB for each container.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     security_opt:
       - no-new-privileges:true
     cap_drop:
       - ALL
     restart: unless-stopped
+    # The api and the stratum share one database file, in a folder that belongs to this user.
+    user: "10001:10001"
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       node:
         condition: service_started
+    volumes:
+      - ${APP_DATA_DIR}/db:/data
     environment:
-      - DB_HOST=bch2-apps-forge-solo_postgres_1
-      - DB_PORT=5432
-      - DB_USER=forge
-      - DB_PASSWORD=${APP_DB_PASSWORD}
-      - DB_NAME=forgesolo
-      - DB_SSLMODE=disable
+      - DB_PATH=/data/forgesolo.db
       - RPC_URL=http://bch2-apps-forge-solo_node_1:8342
       - RPC_USER=forge
       - RPC_PASSWORD=${APP_NODE_RPC_PASSWORD}
@@ -146,25 +224,33 @@ services:
       - AUX1175_PASSWORD=${APP_1175_RPC_PASSWORD}
       - POOL_ADDRESS=${POOL_ADDRESS:-}
       - POOL_NAME=${POOL_NAME:-Forge Solo}
-      # The api reads these as fallbacks for a fresh install; without them here its
-      # fallback branches could never fire, so a user who configured the tag or the 1175
-      # address in the Umbrel app config saw "not configured — merge-mining OFF" while
-      # merge mining was in fact running, and a tag box showing the default while blocks
-      # carried the real one -- which the next Save would then overwrite. Empty means
-      # Forge Solo's default tag, //forgesolo//, which the api and stratum both build in.
+      # The api reads these as fallbacks for a fresh install. Empty means Forge Solo's default
+      # tag, //forgesolo//, which the api and stratum both build in.
       - COINBASE_TAG=${COINBASE_TAG:-}
       - PAYOUT_ADDRESS_1175=${PAYOUT_ADDRESS_1175:-}
-      - HOME_APP=1
-      - CORS_ORIGINS=
+      # A settings change must carry this app's own password: every app on an Umbrel shares one
+      # network and can reach this API directly, without going through umbrelOS's login. umbrelOS
+      # derives the password for this app alone and shows it to the owner under the app's Default
+      # credentials (deterministicPassword in umbrel-app.yml). Without it the API takes no change.
+      - SETTINGS_PASSWORD=${APP_PASSWORD}
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/api/v1/stats || exit 1"]
-      interval: 10s
+      # /health checks the database file only.
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/api/v1/health || exit 1"]
+      interval: 30s
       timeout: 5s
       retries: 5
       start_period: 30s
 
   stratum:
-    image: ghcr.io/bitcoincashii/forge-solo-stratum:1.0.12@sha256:3b75a92739f41b0240a5c04457a23fe965bcd83e08ea5047fe41b944ffeb873c
+    image: ghcr.io/bitcoincashii/forge-solo-stratum:1.0.13@sha256:1335d78f24c6373aa5739f4aefb749b3bf72f277a6bd9309ccd0ea58add26002
+    networks:
+      - forge
+    # At most 30 MB of log: umbrelOS 2.0 keeps up to 100 MB for each container.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -173,13 +259,16 @@ services:
     # Room to stop both ports (2 s grace each for connected miners) and send the pool the TIDES
     # shares still queued, instead of Docker's 10 s default killing it part way.
     stop_grace_period: 30s
+    user: "10001:10001"
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       api:
         condition: service_started
       node1175:
         condition: service_started
+    volumes:
+      - ${APP_DATA_DIR}/db:/data
     ports:
       - "3333:3333"   # your own hardware, and Braiins (which connects each miner individually)
       - "3335:3335"   # proxied rental hashpower: NiceHash / MiningRigRentals
@@ -188,23 +277,9 @@ services:
       # The stats server the api polls. Bound on 0.0.0.0 so the api container can reach it
       # over the private app network; the port is never published to the host, and the
       # constant-time internal-token check is what guards it. Must stay in step with the
-      # api's STRATUM_INTERNAL_URL (http://stratum:3337).
+      # api's STRATUM_INTERNAL_URL (bch2-apps-forge-solo_stratum_1:3337).
       - INTERNAL_STATS_HOST=0.0.0.0
-      # Where the stratum would REACH the api, which is a different thing from the line
-      # above: api.exe listens on 8080 (API_LISTEN_PORT), not on 3337. This pointed at
-      # 0.0.0.0:3337 -- the stratum's own stats port, which serves only /internal/* -- so
-      # every /api/v1/miners/.../settings request would have 404ed. It is inert today
-      # because both call sites are gated on !SoloOnly and this app is payout_scheme
-      # "solo", but a wrong value that only a future change would expose is worth not
-      # leaving in place.
-      - API_HOST=bch2-apps-forge-solo_api_1
-      - API_PORT=8080
-      - DB_HOST=bch2-apps-forge-solo_postgres_1
-      - DB_PORT=5432
-      - DB_USER=forge
-      - DB_PASSWORD=${APP_DB_PASSWORD}
-      - DB_NAME=forgesolo
-      - DB_SSLMODE=disable
+      - DB_PATH=/data/forgesolo.db
       - RPC_USER=forge
       - RPC_PASSWORD=${APP_NODE_RPC_PASSWORD}
       - NODE_HOST=bch2-apps-forge-solo_node_1
@@ -219,13 +294,22 @@ services:
       - PAYOUT_ADDRESS_1175=${PAYOUT_ADDRESS_1175:-}
     healthcheck:
       test: ["CMD-SHELL", "nc -z localhost 3333 || exit 1"]
-      interval: 30s
+      interval: 60s
       timeout: 5s
       retries: 3
       start_period: 30s
 
   web:
-    image: ghcr.io/bitcoincashii/forge-solo-web:1.0.12@sha256:e9787ad60148371f380cc7616d5586a090b5f9cca43326dcf76ddcf7e1db8333
+    image: ghcr.io/bitcoincashii/forge-solo-web:1.0.13@sha256:20a8e8e47f8cea2a4946bea613c57ef1b2a7f104421f797247a5262d8ca4f7a1
+    networks:
+      - default
+      - forge
+    # At most 30 MB of log: umbrelOS 2.0 keeps up to 100 MB for each container.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     restart: unless-stopped
     depends_on:
       - api
