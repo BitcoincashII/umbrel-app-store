@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Umbrel runs exports.sh before starting the app. We generate a UNIQUE random secret per
-# install for every credential (node RPC, 1175 node RPC, database, internal-API token) and
-# persist them so they are stable across restarts. Nothing is ever hardcoded or shared.
+# install for every credential (node RPC, 1175 node RPC, internal-API token) and persist them
+# so they are stable across restarts. Nothing is ever hardcoded or shared. APP_DB_PASSWORD is
+# the password of the PostgreSQL database of 1.0.12 and earlier: nothing uses it since 1.0.13,
+# and it is kept so that 1.0.12, after a return to it, opens its database with it.
 #
 # umbreld SOURCES this file into its own script, so nothing here may change that shell's settings:
 # the secrets are made in a subshell with its own umask and options. (A top-level umask 077 here
@@ -15,8 +17,8 @@
 APP_SECRETS_FILE="${APP_DATA_DIR}/.secrets.env"
 
 # Made when missing, and remade when unusable (a first install cut short can leave empty values)
-# as long as no database exists yet. A database made with the old passwords could not be opened
-# with new ones, so then the file is left as it is for a person to look at.
+# as long as no database of 1.0.12 or earlier exists. That database could not be opened with a
+# new password, so then the file is left as it is for a person to look at.
 if ! (for k in APP_NODE_RPC_PASSWORD APP_1175_RPC_PASSWORD APP_DB_PASSWORD APP_INTERNAL_API_TOKEN; do
         grep -Eq "^${k}=[0-9a-f]{64}$" "${APP_SECRETS_FILE}" 2>/dev/null || exit 1
       done) && [ ! -e "${APP_DATA_DIR}/postgres/PG_VERSION" ]; then

@@ -4,7 +4,7 @@ name: Forge Solo
 tagline: Solo-mine BCH2 at home and merge-mine 1175
 icon: https://raw.githubusercontent.com/BitcoincashII/BCH2-Graphics/main/bch2_logo.png
 category: bitcoin
-version: "1.0.13"
+version: "1.0.15"
 # The dashboard's port. Not 3080, which other apps use: installing would fail with "port is
 # already allocated". The miners' ports are 3333 and 3335.
 port: 31175
@@ -27,10 +27,11 @@ description: >-
     - Variable difficulty (works with small ASICs like the Bitaxe)
 
   Set your BCH2 payout address, and your 1175 payout address, on the app's Settings page:
-  every block's reward is paid there, and the miner's worker name is just a label. Then point
-  your miner at stratum+tcp://<your-umbrel-ip>:3333 and you're mining. Braiins connects each
-  miner individually, so it uses 3333 like your own hardware; NiceHash and MiningRigRentals put
-  the whole order behind one connection, so they use 3335.
+  every block you solo-mine pays them, in TIDES mode every share is credited to your BCH2
+  address, and the miner's worker name is just a label. Then point your miner at
+  stratum+tcp://<your-umbrel-ip>:3333 and you're mining. Braiins connects each miner
+  individually, so it uses 3333 like your own hardware; NiceHash and MiningRigRentals put the
+  whole order behind one connection, so they use 3335.
 
 
   Settings asks for Forge Solo's password before it saves a change. umbrelOS shows it when you
@@ -56,20 +57,16 @@ support: https://github.com/BitcoincashII/forge-solo/issues
 # app page reads gallery.length.
 gallery: []
 releaseNotes: >-
-  Forge Solo keeps its data in one file, is much smaller, and records your blocks more reliably.
+  Forge Solo says which blocks pay the TIDES window, and keeps its log short while the node catches up.
 
 
   Highlights:
-    - At the first start your settings, blocks and payouts move into db/forgesolo.db, once.
-    - The old database stays in postgres/ for going back to 1.0.12. Once 1.0.13 shows your data, you can delete it. If the move fails, nothing is lost: the dashboard says why and offers to start without the old data.
-    - Installing downloads about 240 MB instead of 930 MB; its images take about 0.6 GB of disk instead of 2.3 GB.
-    - Settings asks for Forge Solo's password, shown when you open the app or right-click its icon. Other apps reach only the dashboard.
-    - A found block is retried for 30 minutes while the node is busy, and recorded once it can be. A new payout address applies at once.
-    - The dashboard's totals stay right past 100 blocks, and the pages work on phones.
-    - Each miner's difficulty stays near its level, never above the network's.
-    - Rentals get a difficulty inside MiningRigRentals' optimal range for most rigs; TIDES no longer under-credits their first jobs.
-    - The BCH2 node rebuilds chain data a power cut damaged, once, instead of restarting for ever.
-    - The mining ports and TIDES mode hold up against bad shares, idle connections and a slow pool.
+    - The TIDES help, Settings and the TIDES card say which blocks pay the window: those found on work Forge Pool registered. A block found on solo work pays your payout address in full.
+    - The TIDES help gives the pool's share difficulty, the window's size and the carrying of small amounts as Forge Pool applies them.
+    - While the BCH2 node catches up, the mining service's log gives its progress once a minute instead of two lines for every block.
+    - A mistyped BCH2 address used as a username is caught with or without the bitcoincashii: prefix. Every miner is still credited to your payout address.
+    - Built with Go 1.27.2, which fixes security problems in Go's standard library, and SQLite 3.53.4. The images are based on Ubuntu 24.04.5 (the nodes), the latest Debian 12 (the API and the miner) and Alpine 3.24 (the migrate step).
+    - Coming from 1.0.12: at the first start your settings, blocks and payouts move into db/forgesolo.db, once. The old database stays in postgres/ for going back to 1.0.12. If the move fails, nothing is lost: the dashboard says why and offers to start without the old data.
 
   Full release notes: https://github.com/BitcoincashII/forge-solo/blob/main/RELEASE_NOTES.md
 dependencies: []
