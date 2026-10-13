@@ -4,7 +4,7 @@ name: Forge Solo
 tagline: Solo-mine BCH2 at home and merge-mine 1175
 icon: https://raw.githubusercontent.com/BitcoincashII/BCH2-Graphics/main/bch2_logo.png
 category: bitcoin
-version: "1.0.15"
+version: "1.0.16"
 # The dashboard's port. Not 3080, which other apps use: installing would fail with "port is
 # already allocated". The miners' ports are 3333 and 3335.
 port: 31175
@@ -22,7 +22,7 @@ description: >-
   Includes:
     - A built-in BCH2 full node (auto-syncs and keeps the whole chain)
     - A built-in 1175 (ESF) node for AuxPoW merge-mining
-    - A simple dashboard: hashrate, effort, your blocks, payouts, and the TIDES window
+    - A simple dashboard: hashrate, effort, your blocks, payouts, the coins at your payout address, and the TIDES window
     - Block rewards paid straight to your address by the coinbase, with no payout wallet
     - Variable difficulty (works with small ASICs like the Bitaxe)
 
@@ -57,15 +57,15 @@ support: https://github.com/BitcoincashII/forge-solo/issues
 # app page reads gallery.length.
 gallery: []
 releaseNotes: >-
-  Forge Solo says which blocks pay the TIDES window, and keeps its log short while the node catches up.
+  Forge Solo shows the coins at your payout address, and says what to check when Forge Pool refuses the Umbrel's requests because its clock is off.
 
 
   Highlights:
-    - The TIDES help, Settings and the TIDES card say which blocks pay the window: those found on work Forge Pool registered. A block found on solo work pays your payout address in full.
-    - The TIDES help gives the pool's share difficulty, the window's size and the carrying of small amounts as Forge Pool applies them.
-    - While the BCH2 node catches up, the mining service's log gives its progress once a minute instead of two lines for every block.
-    - A mistyped BCH2 address used as a username is caught with or without the bitcoincashii: prefix. Every miner is still credited to your payout address.
-    - Built with Go 1.27.2, which fixes security problems in Go's standard library, and SQLite 3.53.4. The images are based on Ubuntu 24.04.5 (the nodes), the latest Debian 12 (the API and the miner) and Alpine 3.24 (the migrate step).
+    - A Wallet card on the dashboard: the coins at your payout address, and at your 1175 address, as your nodes see them. What is spendable, and what is still maturing with the blocks each has to wait. Read from your own nodes only; Forge Solo holds no keys.
+    - Open BCH2 Wallet opens the BCH2 Wallet, wallet.bch2.org, in a new tab. It keeps its keys in your browser.
+    - While no payout address is set, Settings links to the BCH2 Wallet, which makes one. Forge Solo only needs the address, so the keys can stay on another device, such as your phone.
+    - TIDES: when Forge Pool refuses requests because the Umbrel's clock is off, the dashboard says how far off it is and what to check.
+    - Settings saves only a 1175 address the 1175 node pays. If one saved before is not, the dashboard says merge-mining is off.
     - Coming from 1.0.12: at the first start your settings, blocks and payouts move into db/forgesolo.db, once. The old database stays in postgres/ for going back to 1.0.12. If the move fails, nothing is lost: the dashboard says why and offers to start without the old data.
 
   Full release notes: https://github.com/BitcoincashII/forge-solo/blob/main/RELEASE_NOTES.md

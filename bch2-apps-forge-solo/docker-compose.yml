@@ -22,7 +22,7 @@ services:
       APP_PORT: 80
 
   node:
-    image: ghcr.io/bitcoincashii/forge-solo-node:1.0.15@sha256:e4472d388dda1a75da8e16d300c7385ea56bfe8e9ea079d27054ad4f551c3e1f
+    image: ghcr.io/bitcoincashii/forge-solo-node:1.0.16@sha256:c07350210b2f243f64d0407027416da74d7ad342eb263560d91f7b62644b7be9
     networks:
       - forge
     # At most 30 MB of log: umbrelOS 2.0 keeps up to 100 MB for each container.
@@ -81,7 +81,7 @@ services:
       start_period: 180s
 
   node1175:
-    image: ghcr.io/bitcoincashii/forge-solo-node1175:1.0.15@sha256:c1c572253bc85e921d0bb490bf9d374f4264a3ab6849b0e28d48e7ba80d909a2
+    image: ghcr.io/bitcoincashii/forge-solo-node1175:1.0.16@sha256:816def30521fa690f74270b301ac324ec83445334dd08423db43e367c59a6775
     networks:
       - forge
     # At most 30 MB of log: umbrelOS 2.0 keeps up to 100 MB for each container.
@@ -129,7 +129,7 @@ services:
   # move below. Without a service of this name the old server would go on running on the old
   # data beside the move's own. This one does nothing and exits.
   postgres:
-    image: ghcr.io/bitcoincashii/forge-solo-migrate:1.0.15@sha256:268cec182d48cb989b23f64582b7a3b153abd31bb9109a6a51a730e499eca1bd
+    image: ghcr.io/bitcoincashii/forge-solo-migrate:1.0.16@sha256:8445c560f9dc6e0d33b7b1adecee81ce0ab989535a47092d01375ca8334ea099
     command: ["noop"]
     restart: "no"
     network_mode: none
@@ -156,7 +156,7 @@ services:
   # and stop it (KILL), to read that data (DAC_OVERRIDE), and to give the database's files to
   # 10001:10001, the api's and the stratum's user (CHOWN, FOWNER).
   migrate:
-    image: ghcr.io/bitcoincashii/forge-solo-migrate:1.0.15@sha256:268cec182d48cb989b23f64582b7a3b153abd31bb9109a6a51a730e499eca1bd
+    image: ghcr.io/bitcoincashii/forge-solo-migrate:1.0.16@sha256:8445c560f9dc6e0d33b7b1adecee81ce0ab989535a47092d01375ca8334ea099
     command: ["run", "--db=/data/forgesolo.db", "--pgdata=/pg", "--owner=10001:10001"]
     restart: "no"
     network_mode: none
@@ -187,7 +187,7 @@ services:
         condition: service_completed_successfully
 
   api:
-    image: ghcr.io/bitcoincashii/forge-solo-api:1.0.15@sha256:aeb74175756763b6b3abf260ecf89cc350f221146dc0159bb4228e5c4b1118b4
+    image: ghcr.io/bitcoincashii/forge-solo-api:1.0.16@sha256:d8fa07325a29516843d998a6ad69aa8b240aa98da2927491eb334b99cdf460b0
     networks:
       - forge
     # At most 30 MB of log: umbrelOS 2.0 keeps up to 100 MB for each container.
@@ -218,7 +218,8 @@ services:
       - STRATUM_INTERNAL_URL=http://bch2-apps-forge-solo_stratum_1:3337
       - INTERNAL_API_TOKEN=${APP_INTERNAL_API_TOKEN}
       # Read-only: the dashboard reports whether the 1175 P2P forward is working, which needs
-      # that node's own peer list. Same private network, never published to the host.
+      # that node's own peer list, and its Wallet card reads the coins at the 1175 address from
+      # that node (scantxoutset). Same private network, never published to the host.
       - AUX1175_URL=http://bch2-apps-forge-solo_node1175_1:25359
       - AUX1175_USER=forge1175
       - AUX1175_PASSWORD=${APP_1175_RPC_PASSWORD}
@@ -242,7 +243,7 @@ services:
       start_period: 30s
 
   stratum:
-    image: ghcr.io/bitcoincashii/forge-solo-stratum:1.0.15@sha256:1350e15ca209495a2a580b024b7c45ad578501a7d23aabec5dd8641755afb975
+    image: ghcr.io/bitcoincashii/forge-solo-stratum:1.0.16@sha256:0392e42498923c3347502a226ba0f739e4a6d0fafcda426b17ad8fd61ed2a960
     networks:
       - forge
     # At most 30 MB of log: umbrelOS 2.0 keeps up to 100 MB for each container.
@@ -300,7 +301,7 @@ services:
       start_period: 30s
 
   web:
-    image: ghcr.io/bitcoincashii/forge-solo-web:1.0.15@sha256:94d337c1add2eac00d0d0503a1c8bad856d4d8d7f997bc9d465b0e8f75cc8605
+    image: ghcr.io/bitcoincashii/forge-solo-web:1.0.16@sha256:9ab0e47c0c3d6ace2f7b8b29790cce5c79df9944a4bb7530624ae19b1f737524
     networks:
       - default
       - forge
