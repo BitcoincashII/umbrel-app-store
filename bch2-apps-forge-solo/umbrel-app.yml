@@ -4,7 +4,7 @@ name: Forge Solo
 tagline: Solo-mine BCH2 at home and merge-mine 1175
 icon: https://raw.githubusercontent.com/BitcoincashII/BCH2-Graphics/main/bch2_logo.png
 category: bitcoin
-version: "1.0.16"
+version: "1.0.17"
 # The dashboard's port. Not 3080, which other apps use: installing would fail with "port is
 # already allocated". The miners' ports are 3333 and 3335.
 port: 31175
@@ -57,15 +57,14 @@ support: https://github.com/BitcoincashII/forge-solo/issues
 # app page reads gallery.length.
 gallery: []
 releaseNotes: >-
-  Forge Solo shows the coins at your payout address, and says what to check when Forge Pool refuses the Umbrel's requests because its clock is off.
+  Forge Solo now reaches your miner's difficulty faster: when a miner connects it settles on the right difficulty in a few steps instead of many, so the dashboard reads right soon after you connect a miner.
 
 
   Highlights:
-    - A Wallet card on the dashboard: the coins at your payout address, and at your 1175 address, as your nodes see them. What is spendable, and what is still maturing with the blocks each has to wait. Read from your own nodes only; Forge Solo holds no keys.
-    - Open BCH2 Wallet opens the BCH2 Wallet, wallet.bch2.org, in a new tab. It keeps its keys in your browser.
-    - While no payout address is set, Settings links to the BCH2 Wallet, which makes one. Forge Solo only needs the address, so the keys can stay on another device, such as your phone.
-    - TIDES: when Forge Pool refuses requests because the Umbrel's clock is off, the dashboard says how far off it is and what to check.
-    - Settings saves only a 1175 address the 1175 node pays. If one saved before is not, the dashboard says merge-mining is off.
+    - Variable difficulty climbs from its floor to your miner's level in a few steps now, so the dashboard's hashrate and shares settle soon after a miner connects instead of reading low at first.
+    - Nothing to set: a miner already running keeps the difficulty it had. Only how quickly a new connection reaches its level has changed.
+    - A rented order reaches its difficulty quickly too (3335 for NiceHash and MiningRigRentals, 3333 for Braiins), so its worker difficulty reads steady sooner.
+    - This is the mode small ASICs like the Bitaxe use. It works the same whether you solo-mine, mine for a rented order, or mine TIDES.
     - Coming from 1.0.12: at the first start your settings, blocks and payouts move into db/forgesolo.db, once. The old database stays in postgres/ for going back to 1.0.12. If the move fails, nothing is lost: the dashboard says why and offers to start without the old data.
 
   Full release notes: https://github.com/BitcoincashII/forge-solo/blob/main/RELEASE_NOTES.md
