@@ -63,7 +63,7 @@ releaseNotes: >-
   Highlights:
     - Variable difficulty climbs from its floor to your miner's level in a few steps now, so the dashboard's hashrate and shares settle soon after a miner connects instead of reading low at first.
     - Nothing to set: a miner already running keeps the difficulty it had. Only how quickly a new connection reaches its level has changed.
-    - A rented order reaches its difficulty quickly too (3335 for NiceHash and MiningRigRentals, 3333 for Braiins), so its worker difficulty reads steady sooner.
+    - Rented hashpower benefits too: an order reaches its difficulty quickly, so its worker difficulty reads steady soon after it connects instead of sitting low at first.
     - This is the mode small ASICs like the Bitaxe use. It works the same whether you solo-mine, mine for a rented order, or mine TIDES.
     - Coming from 1.0.12: at the first start your settings, blocks and payouts move into db/forgesolo.db, once. The old database stays in postgres/ for going back to 1.0.12. If the move fails, nothing is lost: the dashboard says why and offers to start without the old data.
 
